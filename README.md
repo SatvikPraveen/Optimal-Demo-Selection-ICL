@@ -2,6 +2,12 @@
 
 Implements and benchmarks optimal demonstration selection strategies in In-Context Learning (ICL) using large language models (LLMs). Strategies covered: IDS, RDES, Se², TopK+ConE, and Influence-based methods, evaluated across classification, reasoning, and QA tasks.
 
+## Team Members 
+- Kamisetty Yamini Preethi • Yamini_Preethi_K@tamu.edu  
+- Jonathan Tong • tongjo@tamu.edu  
+- Satvik Praveen • satvikpraveen_164@tamu.edu  
+- Vinay Chandra Bandi • vinaychandra@tamu.edu  
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)  
