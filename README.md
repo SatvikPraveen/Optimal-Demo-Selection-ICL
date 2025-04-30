@@ -62,10 +62,6 @@ This repository supports research on demonstration selection for ICL. We investi
 | GPT-2 (100 M)  |  0.603  | 0.370 |     0.260     |
 ---
 
-Here are the four tables converted into GitHub‐README–friendly Markdown. You can paste these directly into your `README.md` (or any other Markdown file) under an appropriate heading.
-
----
-
 ### IDS Performance (averaged over 3 splits)
 
 | Model         | AG News | SST-5 | CommonsenseQA |
@@ -74,6 +70,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | Gemma-2B-it   |  0.85   | 0.62  |     0.590     |
 | LLaMA-3.2-3B  |  0.82   | 0.57  |     0.540     |
 
+![IDS Performance](Figures/IDS_results.png)
 ---
 
 ### RDES Performance
@@ -84,6 +81,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | LLaMA-3.2-3B |  0.52  | 0.4351  |  0.6276  |     0.24      |
 | Gemma-2B     |  0.91  | 0.3297  |  0.2500  |     0.4357    |
 
+![RDES Performance](Figures/RDES_results.png)
 ---
 
 ### Influence-Based Selection Performance
@@ -94,6 +92,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | LLaMA-3.2-3B |  0.25   | 0.27  |     0.710     |
 | Gemma-2B     |  0.524  | 0.511 |     0.710     |
 
+![Influence Selection Performance](Figures/Influence_results_image.png)
 ---
 
 ### 1. Se² Performance Across Model Architectures
@@ -104,9 +103,9 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | GEMMA-2B      |        0.211  |   0.825 | 0.258 |
 | GPT-2-medium  |        0.196  |   0.581 | 0.263 |
 
-![Se2 Across Models](strategies/se2/plots/Se2_Other_models.png)
+![Se² Across Models](Figures/Se2_Other_models.png)
 
-*Table:* Average Se² accuracy over three 200-example splits.  
+*Table:* Average Se² accuracy over three 100-example splits.  
 *Figure:* Bar chart of Se² performance on CommonsenseQA, AG News, and SST-5.
 
 ---
@@ -121,7 +120,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | 2-shot       | 0.108 | 0.140 | 0.179 |
 | 3-shot       | 0.079 | 0.060 | 0.080 |
 
-![CommonsenseQA](strategies/se2/plots/Se2_llama_CommonsenseQA.png)
+![CommonsenseQA Se²](Figures/Se2_llama_CommonsenseQA.png)
 
 #### AG News
 
@@ -131,7 +130,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | 2-shot       | 0.731 | 0.748 | 0.759 |
 | 3-shot       | 0.727 | 0.765 | 0.786 |
 
-![AG News](strategies/se2/plots/Se2_llama_AG_News.png)
+![AG News Se²](Figures/Se2_llama_AG_News.png)
 
 #### SST-5
 
@@ -141,12 +140,12 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | 2-shot       | 0.361 | 0.387 | 0.382 |
 | 3-shot       | 0.394 | 0.352 | 0.396 |
 
-![SST-5](strategies/se2/plots/Se2_llama_SST5.png)
+![SST-5 Se²](Figures/Se2_llama_SST5.png)
 
 *All values averaged over three random splits.*
 
 ---
-### Summary: All Methods on AG News
+### Summary: All Methods
 
 | Method      | GPT-2  | LLaMA-3.2-3B | Gemma-2B |
 |-------------|:------:|:------------:|:--------:|
@@ -156,6 +155,7 @@ Here are the four tables converted into GitHub‐README–friendly Markdown. You
 | Se²         | 0.581  |    0.698     |  0.825   |
 | Influence   | 0.700  |    0.250     |  0.524   |
 
+![All Methods](Figures/results_comparison.png)
 ---
 
 ## Usage
