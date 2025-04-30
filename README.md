@@ -39,9 +39,10 @@ This repository supports research on demonstration selection for ICL. We investi
 ## Models & Datasets
 
 **Models**  
-- LLaMA-3.2-8B  
+- LLaMA-3.2-3B  
 - GPT-2 (medium)  
-- Deepseek-LLM-7B  
+- GPT Neo
+- Gemma-2B
 
 **Datasets**  
 - **SST-5**: 5-class sentiment classification  
