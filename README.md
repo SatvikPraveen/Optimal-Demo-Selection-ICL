@@ -7,9 +7,14 @@ Implements and benchmarks optimal demonstration selection strategies in In-Conte
 1. [Project Overview](#project-overview)  
 2. [Selection Strategies](#selection-strategies)  
 3. [Models & Datasets](#models--datasets)  
-4. [Experiment Results](#experiment-results)  
-   - Se² Across Models  
-   - Se² with LLaMA-3.2-3B (CommonsenseQA, AG News, SST-5)  
+4. [Experiment Results](#experiment-results)
+   - [TopK + ConE Results](#topk--cone-performance)
+   - [Iterative Demonstration Selection (IDS)](#iterative-demonstration-selection-ids)
+   - [Reinforcement Demonstration Selection (RDES)](#reinforcement-demonstration-selection-rdes)
+   - [Sequential Example Selection (Se²) Across Models](#se²-across-models)
+   - [Se² with LLaMA-3.2-3B](#se²-with-llama-3.2-3b-commonsenseqa-ag-news-sst-5)
+   - [Influence-based Selection Results](#influence-based-selection-performance)
+   - [Overall Method Comparison](#comparison-of-all-methods)
 5. [Usage](#usage)  
 6. [Repository Structure](#repository-structure)  
 
