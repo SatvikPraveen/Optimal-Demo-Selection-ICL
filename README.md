@@ -1,7 +1,3 @@
-Certainly! Here’s an updated README incorporating your experiment results tables and figures. Feel free to adjust paths or styling as needed.
-
----
-
 # Optimal-Demo-Selection-ICL
 
 Implements and benchmarks optimal demonstration selection strategies in In-Context Learning (ICL) using large language models (LLMs). Strategies covered: IDS, RDES, Se², TopK+ConE, and Influence-based methods, evaluated across classification, reasoning, and QA tasks.
