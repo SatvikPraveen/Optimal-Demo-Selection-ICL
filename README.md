@@ -158,23 +158,6 @@ This repository supports research on demonstration selection for ICL. We investi
 ![All Methods](Figures/results_comparison.png)
 ---
 
-## Usage
-
-1. **Install dependencies**  
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. **Run all experiments**  
-   ```bash
-   bash experiments/run_all.sh
-   ```
-3. **Visualize specific strategy**  
-   ```bash
-   python notebooks/strategy_comparison.ipynb
-   ```
-
----
-
 ## Repository Structure
 
 ```
