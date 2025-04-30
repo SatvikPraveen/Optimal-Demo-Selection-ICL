@@ -52,6 +52,49 @@ This repository supports research on demonstration selection for ICL. We investi
 
 ## Experiment Results
 
+### TopK + ConE Performance
+
+| Model          | AG News | SST-5 | CommonsenseQA |
+| -------------- | :-----: | :---: | :-----------: |
+| LLaMA-3.2-3b   |  0.786  | 0.567 |     0.640     |
+| Gemma-2-2b     |  0.790  | 0.530 |     0.496     |
+| GPT-2 (100 M)  |  0.603  | 0.370 |     0.260     |
+---
+
+Here are the four tables converted into GitHub‐README–friendly Markdown. You can paste these directly into your `README.md` (or any other Markdown file) under an appropriate heading.
+
+---
+
+### IDS Performance (averaged over 3 splits)
+
+| Model         | AG News | SST-5 | CommonsenseQA |
+|---------------|:-------:|:-----:|:-------------:|
+| GPT-4o-mini   |  0.88   | 0.68  |     0.829     |
+| Gemma-2B-it   |  0.85   | 0.62  |     0.590     |
+| LLaMA-3.2-3B  |  0.82   | 0.57  |     0.540     |
+
+---
+
+### RDES Performance
+
+| Model        | SST-2  | SST-5   | AG News  | CommonsenseQA |
+|--------------|:------:|:-------:|:--------:|:-------------:|
+| GPT-2        |  0.51  | 0.1535  |  0.2534  |     0.19      |
+| LLaMA-3.2-3B |  0.52  | 0.4351  |  0.6276  |     0.24      |
+| Gemma-2B     |  0.91  | 0.3297  |  0.2500  |     0.4357    |
+
+---
+
+### Influence-Based Selection Performance
+
+| Model        | AG News | SST-5  | CommonsenseQA |
+|--------------|:-------:|:-----:|:-------------:|
+| GPT-2        |  0.70   | 0.70  |     0.182     |
+| LLaMA-3.2-3B |  0.25   | 0.27  |     0.710     |
+| Gemma-2B     |  0.524  | 0.511 |     0.710     |
+
+---
+
 ### 1. Se² Performance Across Model Architectures
 
 | Model         | CommonsenseQA | AG News | SST-5 |
@@ -100,6 +143,17 @@ This repository supports research on demonstration selection for ICL. We investi
 ![SST-5](strategies/se2/plots/Se2_llama_SST5.png)
 
 *All values averaged over three random splits.*
+
+---
+### Summary: All Methods on AG News
+
+| Method      | GPT-2  | LLaMA-3.2-3B | Gemma-2B |
+|-------------|:------:|:------------:|:--------:|
+| TopK+ConE   | 0.603  |    0.786     |  0.790   |
+| IDS         | 0.880  |    0.820     |  0.850   |
+| RDES        | 0.2534 |    0.6276    |  0.2500  |
+| Se²         | 0.581  |    0.698     |  0.825   |
+| Influence   | 0.700  |    0.250     |  0.524   |
 
 ---
 
