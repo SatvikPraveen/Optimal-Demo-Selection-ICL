@@ -162,21 +162,14 @@ This repository supports research on demonstration selection for ICL. We investi
 
 ```
 Optimal-Demo-Selection-ICL/
-├── README.md
-├── requirements.txt
-├── data/                        # raw & processed datasets
-├── models/                      # model wrappers (LLAMA, GPT2, Deepseek)
-├── strategies/
-│   ├── ids/
-│   ├── rdes/
-│   ├── se2/                     # includes plots/ with Se² figures
-│   ├── topk_cone/
-│   └── influence/
-├── evaluations/                 # evaluation scripts & metrics
-├── notebooks/                   # exploratory and comparison notebooks
-└── experiments/
-    ├── configs/
-    ├── logs/
-    ├── run_experiment.py
-    └── run_all.sh
+├── Figures/            # added influence results plot, IDS, RDES, Se2 & TopK+CoNE plots
+├── ICINF/              # influence code
+├── IDS/                # IDF and ICINF code
+├── RDES/               # Reinforcement Learning approach code ICL
+├── SE2/                # notebook for experimenting with Meta LLAMA
+├── TopK+CoNE/          # TK+CE code
+├── .gitignore          # modified gitignore file
+├── IDS.py              # sample code for IDS
+├── LICENSE             # Initial commit
+└── README.md           # Update README.md
 ```
