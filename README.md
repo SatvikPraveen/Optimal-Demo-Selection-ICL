@@ -1,92 +1,144 @@
+Certainly! Here’s an updated README incorporating your experiment results tables and figures. Feel free to adjust paths or styling as needed.
+
+---
+
 # Optimal-Demo-Selection-ICL
-Implements and benchmarks optimal demonstration selection strategies in In-Context Learning using LLMs. Implements IDS, RDES, Se², TopK+ConE, and Influence-based methods to analyze the role of relevance, diversity, and ordering across various tasks and datasets.
 
-# Optimal Demonstration Selection Techniques in In-Context Learning
+Implements and benchmarks optimal demonstration selection strategies in In-Context Learning (ICL) using large language models (LLMs). Strategies covered: IDS, RDES, Se², TopK+ConE, and Influence-based methods, evaluated across classification, reasoning, and QA tasks.
 
-This repository supports research on demonstration selection strategies for In-Context Learning (ICL) using Large Language Models (LLMs). It implements and benchmarks diverse strategies to study how relevance, diversity, and example ordering affect model performance across classification, reasoning, and QA tasks.
+## Table of Contents
 
-## 🧠 Selection Strategies Implemented
+1. [Project Overview](#project-overview)  
+2. [Selection Strategies](#selection-strategies)  
+3. [Models & Datasets](#models--datasets)  
+4. [Experiment Results](#experiment-results)  
+   - Se² Across Models  
+   - Se² with LLaMA-3.2-3B (CommonsenseQA, AG News, SST-5)  
+5. [Usage](#usage)  
+6. [Repository Structure](#repository-structure)  
 
-- **TopK + ConE** – Measures how each demo improves model understanding (Peng et al.)
-- **IDS (Iterative Demonstration Selection)** – Uses Zero-Shot CoT reasoning to iteratively refine selection (Qin et al.)
-- **RDES (Relevance-Diversity Enhanced Selection)** – Reinforcement learning-based strategy optimizing diversity and relevance (Wang et al.)
-- **Se² (Sequential-aware Selection)** – Dynamically constructs prompt sequences to improve contextual alignment (Lu et al.)
-- **Influence-based Selection** – Selects examples based on their influence on task performance (Nguyen & Wong, 2023)
+---
 
-## 🎯 Project Goals
+## Project Overview
 
-- Evaluate LLM performance across multiple selection strategies
-- Analyze the trade-offs between similarity, diversity, and order in demonstration selection
-- Understand task-model-strategy interactions on sentiment, reasoning, and classification benchmarks
+This repository supports research on demonstration selection for ICL. We investigate how relevance, diversity, and ordering of examples affect LLM performance.
 
-## 🤖 Models Used
+---
 
-- **LLaMA 3.2 8B** – Meta AI's open-source model
-- **GPT-2** – Baseline GPT family model for comparison
-- **Deepseek-LLM 7B Base** – Recently released model for broader evaluation
+## Selection Strategies
 
-## 📊 Datasets Used
+- **TopK + ConE** — Quantifies each example’s information gain (Peng et al.).  
+- **IDS** — Iterative refinement via zero-shot Chain-of-Thought (Qin et al.).  
+- **RDES** — Reinforcement-learning to balance relevance & diversity (Wang et al.).  
+- **Se²** — Sequential-aware selection with beam search (Lu et al.).  
+- **Influence** — Selects examples by their influence score on model outputs (Nguyen & Wong, 2023).  
 
-- **SST-5** – Sentiment analysis
-- **AGNews / CR / Subj / MNLI / QNLI** – Topic classification & natural language inference
-- **CommonsenseQA / GSM8K / LogiQA / BoolQ** – Commonsense, logical, and math reasoning tasks
+---
 
-## 📁 Folder Structure
+## Models & Datasets
 
-```bash
+**Models**  
+- LLaMA-3.2-8B  
+- GPT-2 (medium)  
+- Deepseek-LLM-7B  
+
+**Datasets**  
+- **SST-5**: 5-class sentiment classification  
+- **AG News**: 4-way topic classification  
+- **CommonsenseQA**: multiple-choice QA  
+- (Also: CR, Subj, MNLI, QNLI, GSM8K, LogiQA, BoolQ)
+
+---
+
+## Experiment Results
+
+### 1. Se² Performance Across Model Architectures
+
+| Model         | CommonsenseQA | AG News | SST-5 |
+|---------------|--------------:|--------:|------:|
+| GPT-Neo-1.3B   |        0.223  |   0.698 | 0.394 |
+| GEMMA-2B      |        0.211  |   0.825 | 0.258 |
+| GPT-2-medium  |        0.196  |   0.581 | 0.263 |
+
+![Se2 Across Models](strategies/se2/plots/Se2_Other_models.png)
+
+*Table:* Average Se² accuracy over three 200-example splits.  
+*Figure:* Bar chart of Se² performance on CommonsenseQA, AG News, and SST-5.
+
+---
+
+### 2. LLaMA-3.2-3B Few-shot Results under Se²
+
+#### CommonsenseQA
+
+| Shot \& Beam | 1     | 2     | 3     |
+|-------------:|------:|------:|------:|
+| 1-shot       | 0.108 | 0.098 | 0.091 |
+| 2-shot       | 0.108 | 0.140 | 0.179 |
+| 3-shot       | 0.079 | 0.060 | 0.080 |
+
+![CommonsenseQA](strategies/se2/plots/Se2_llama_CommonsenseQA.png)
+
+#### AG News
+
+| Shot \& Beam |   1   |   2   |   3   |
+|-------------:|------:|------:|------:|
+| 1-shot       | 0.748 | 0.729 | 0.724 |
+| 2-shot       | 0.731 | 0.748 | 0.759 |
+| 3-shot       | 0.727 | 0.765 | 0.786 |
+
+![AG News](strategies/se2/plots/Se2_llama_AG_News.png)
+
+#### SST-5
+
+| Shot \& Beam |  1    |  2    |  3    |
+|-------------:|------:|------:|------:|
+| 1-shot       | 0.339 | 0.363 | 0.358 |
+| 2-shot       | 0.361 | 0.387 | 0.382 |
+| 3-shot       | 0.394 | 0.352 | 0.396 |
+
+![SST-5](strategies/se2/plots/Se2_llama_SST5.png)
+
+*All values averaged over three random splits.*
+
+---
+
+## Usage
+
+1. **Install dependencies**  
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Run all experiments**  
+   ```bash
+   bash experiments/run_all.sh
+   ```
+3. **Visualize specific strategy**  
+   ```bash
+   python notebooks/strategy_comparison.ipynb
+   ```
+
+---
+
+## Repository Structure
+
+```
 Optimal-Demo-Selection-ICL/
-│
-├── README.md                 # Project overview and instructions
-├── requirements.txt          # Python dependencies
-├── setup.sh                  # Optional: environment setup script
-├── LICENSE                   # License information
-│
-├── data/
-│   ├── raw/                  # Original datasets (e.g., SST-5, AGNews, BoolQ)
-│   ├── processed/            # Preprocessed/tokenized datasets
-│   └── download_scripts/     # Scripts to download and prepare datasets
-│
-├── models/
-│   ├── llama/                # LLaMA 3.2 loading and inference utilities
-│   ├── gpt2/                 # GPT-2 loading and inference utilities
-│   ├── deepseek/             # Deepseek-LLM model wrapper and setup
-│   └── base_model.py         # Common interface for all models
-│
+├── README.md
+├── requirements.txt
+├── data/                        # raw & processed datasets
+├── models/                      # model wrappers (LLAMA, GPT2, Deepseek)
 ├── strategies/
-│   ├── topk_cone/            # Implementation of TopK + ConE (Peng et al.)
-│   ├── ids/                  # Iterative Demonstration Selection (Qin et al.)
-│   ├── rdes/                 # Relevance-Diversity Enhanced Selection (Wang et al.)
-│   ├── se2/                  # Sequential Example Selection (Lu et al.)
-│   ├── influence/            # Influence-based selection (Nguyen & Wong)
-│   └── utils.py              # Common utilities: TF-IDF, cosine similarity, CoT tools
-│
-├── evaluations/
-│   ├── classification/
-│   │   └── run_eval_classification.py   # Accuracy, F1, etc.
-│   ├── reasoning/
-│   │   └── run_eval_reasoning.py        # Evaluation for GSM8K, CommonsenseQA, etc.
-│   └── metrics.py                       # Shared evaluation metrics and helpers
-│
-├── notebooks/
-│   ├── exploratory.ipynb               # Dataset/model exploration
-│   ├── strategy_comparison.ipynb       # Compare strategies across tasks
-│   └── influence_analysis.ipynb        # Influence score visualization and insight
-│
+│   ├── ids/
+│   ├── rdes/
+│   ├── se2/                     # includes plots/ with Se² figures
+│   ├── topk_cone/
+│   └── influence/
+├── evaluations/                 # evaluation scripts & metrics
+├── notebooks/                   # exploratory and comparison notebooks
 └── experiments/
     ├── configs/
-    │   └── experiment_config.yaml      # Task + model + strategy parameters
-    ├── logs/                           # Save outputs and evaluation logs
-    ├── run_experiment.py               # Script to run individual experiments
-    └── run_all.sh                      # Bash script to run all experiments sequentially
-```
-
-## 📦 Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-▶️ Running Experiments
-```bash
-bash experiments/run_all.sh
+    ├── logs/
+    ├── run_experiment.py
+    └── run_all.sh
 ```
