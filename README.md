@@ -1,5 +1,13 @@
 # Optimal-Demo-Selection-ICL
 
+![MIT License](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Repo Size](https://img.shields.io/github/repo-size/SatvikPraveen/Optimal-Demo-Selection-ICL)
+![Issues](https://img.shields.io/github/issues/SatvikPraveen/Optimal-Demo-Selection-ICL)
+![Pull Requests](https://img.shields.io/github/issues-pr/SatvikPraveen/Optimal-Demo-Selection-ICL)
+![Stars](https://img.shields.io/github/stars/SatvikPraveen/Optimal-Demo-Selection-ICL?style=social)
+
+
 Implements and benchmarks optimal demonstration selection strategies in In-Context Learning (ICL) using large language models (LLMs). Strategies covered: IDS, RDES, Se², TopK+ConE, and Influence-based methods, evaluated across classification, reasoning, and QA tasks.
 
 ## Team Members 
