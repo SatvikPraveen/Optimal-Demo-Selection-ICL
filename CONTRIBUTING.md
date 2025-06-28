@@ -1,7 +1,3 @@
-Sure! Here's a clean and professional `CONTRIBUTING.md` that combines your **Task Manager PRO** template structure with the **Optimal-Demo-Selection-ICL** content and context:
-
----
-
 # 🤝 Contributing to Optimal-Demo-Selection-ICL
 
 Thank you for considering contributing to **Optimal-Demo-Selection-ICL**!
