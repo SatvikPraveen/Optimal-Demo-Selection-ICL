@@ -523,10 +523,10 @@ We use:
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{preethi2024optimal,
+@article{praveen2024optimal,
   title={Optimal Demonstration Selection for In-Context Learning},
-  author={Preethi, Kamisetty Yamini and Tong, Jonathan and 
-          Praveen, Satvik and Bandi, Vinay Chandra},
+  author={Praveen, Satvik and Tong, Jonathan and 
+          Kamisetty, Yamini Preethi and Bandi, Vinay Chandra},
   journal={Texas A&M University},
   year={2024}
 }
