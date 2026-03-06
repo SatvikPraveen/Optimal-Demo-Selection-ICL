@@ -1,0 +1,48 @@
+# ============================================================================
+# Core Dependencies for Optimal Demonstration Selection for ICL
+# ============================================================================
+
+# Core ML/DL Frameworks
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.24.0
+
+# Datasets and Data Processing
+datasets>=2.14.0
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Embeddings and Similarity
+sentence-transformers>=2.2.0
+
+# LLM APIs
+openai>=1.0.0
+
+# Utilities
+tqdm>=4.65.0
+fsspec>=2023.12.0
+
+# Visualization and Analysis
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Configuration Management
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Jupyter Support (for development)
+jupyter>=1.0.0
+notebook>=7.0.0
+ipywidgets>=8.0.0
+
+# Testing and Quality
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.4.0
+
+# Additional Scientific Computing
+scipy>=1.11.0

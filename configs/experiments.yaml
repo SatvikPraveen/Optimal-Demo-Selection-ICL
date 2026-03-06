@@ -1,0 +1,79 @@
+# ============================================================================
+# Experiment Configuration
+# ============================================================================
+
+# Default experiment settings
+defaults:
+  seed: 42
+  num_runs: 1
+  k_shot: 5
+  batch_size: 10
+  max_tokens: 100
+  temperature: 0.0
+
+# Selection method configurations
+selection_methods:
+  topk_cone:
+    name: "TopK + CoNE"
+    k: 5
+    retrieve_k: 30
+    scoring_model: "gpt2"
+
+  ids:
+    name: "Iterative Demonstration Selection"
+    k: 4
+    q: 3
+    embedding_model: "all-MiniLM-L6-v2"
+
+  rdes:
+    name: "RDES"
+    k: 5
+    # Add RDES specific parameters
+
+  se2:
+    name: "Se²"
+    k: 5
+    retrieve_k: 20
+    beam_size: 3
+
+  influence:
+    name: "Influence Selection"
+    k: 5
+    # Add influence specific parameters
+
+  random:
+    name: "Random Selection"
+    k: 5
+
+  bm25:
+    name: "BM25 Retrieval"
+    k: 5
+
+  sbert:
+    name: "SBERT Retrieval"
+    k: 5
+    embedding_model: "all-MiniLM-L6-v2"
+
+# Benchmark configurations
+benchmarks:
+  quick_test:
+    datasets: ["sst5"]
+    models: ["gpt2-medium"]
+    methods: ["random", "sbert"]
+    num_test_samples: 100
+    num_train_samples: 500
+
+  full_benchmark:
+    datasets: ["sst5", "agnews", "commonsense_qa"]
+    models: ["gpt-4o-mini", "llama-3.2-3b", "gemma-2b"]
+    methods: ["topk_cone", "ids", "rdes", "se2", "random", "sbert"]
+    num_test_samples: 1000
+    num_train_samples: 5000
+    num_runs: 3
+
+  ablation_study:
+    dataset: "sst5"
+    model: "gpt-4o-mini"
+    methods: ["topk_cone", "ids"]
+    k_shots: [1, 3, 5, 7, 10]
+    num_test_samples: 500

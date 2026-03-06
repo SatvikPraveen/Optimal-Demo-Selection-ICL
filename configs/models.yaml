@@ -1,0 +1,44 @@
+# ============================================================================
+# Model Configuration
+# ============================================================================
+
+models:
+  gpt-4o-mini:
+    type: "openai"
+    model_name: "gpt-4o-mini"
+    api_based: true
+    max_context: 128000
+    cost_per_1k_input: 0.00015
+    cost_per_1k_output: 0.0006
+
+  gpt-3.5-turbo:
+    type: "openai"
+    model_name: "gpt-3.5-turbo"
+    api_based: true
+    max_context: 16385
+    cost_per_1k_input: 0.0005
+    cost_per_1k_output: 0.0015
+
+  llama-3.2-3b:
+    type: "huggingface"
+    model_name: "meta-llama/Llama-3.2-3B-Instruct"
+    api_based: false
+    max_context: 128000
+    requires_auth: true
+    device: "cuda"
+
+  gemma-2b:
+    type: "huggingface"
+    model_name: "google/gemma-2b"
+    api_based: false
+    max_context: 8192
+    requires_auth: true
+    device: "cuda"
+
+  gpt2-medium:
+    type: "huggingface"
+    model_name: "gpt2-medium"
+    api_based: false
+    max_context: 1024
+    requires_auth: false
+    device: "cuda"
