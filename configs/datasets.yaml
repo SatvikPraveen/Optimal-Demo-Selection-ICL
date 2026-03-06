@@ -1,0 +1,50 @@
+# ============================================================================
+# Dataset Configuration
+# ============================================================================
+
+datasets:
+  sst5:
+    name: "SetFit/sst5"
+    config: "default"
+    task_type: "sentiment_classification"
+    num_classes: 5
+    label_names:
+      - "very negative"
+      - "negative"
+      - "neutral"
+      - "positive"
+      - "very positive"
+    splits:
+      train: "train"
+      validation: "validation"
+      test: "test"
+    default_samples:
+      train: 5000
+      test: 1000
+
+  agnews:
+    name: "wangrongsheng/ag_news"
+    task_type: "topic_classification"
+    num_classes: 4
+    label_names:
+      - "World"
+      - "Sports"
+      - "Business"
+      - "Technology"
+    splits:
+      train: "train"
+      test: "test"
+    default_samples:
+      train: 5000
+      test: 1000
+
+  commonsense_qa:
+    name: "tau/commonsense_qa"
+    task_type: "multiple_choice_qa"
+    num_classes: 5
+    splits:
+      train: "train"
+      validation: "validation"
+    default_samples:
+      train: 5000
+      validation: 1000
