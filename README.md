@@ -304,7 +304,7 @@ optimal-demo-selection-icl/
 |--------|-------------|----------|------------|
 | **TopK + CoNE** | Embedding retrieval + Cross-entropy refinement | Information gain quantification | O(n·k) |
 | **IDS** | Iterative refinement with CoT | Align demos with reasoning path | O(q·n·k) |
-| **RDES** | RL-based selection | Balance relevance & diversity | O(n²) |
+| **RDES** | RL-based selection (tabular Q-learning) | Balance relevance & diversity | O(k·n) |
 | **Se²** | Sequential beam search | Order-aware selection | O(k²·b) |
 | **Influence** | Influence function scoring | Gradient-based importance | O(n·p) |
 
@@ -437,14 +437,23 @@ results/
 > `docs/README_old.md` / git history before that commit) — it is not simply
 > carried over from the original notebook-based experiments either. More
 > importantly, it cannot have been produced by the current `src/`-based code:
-> `RDES`, `Se²`, and influence-based selection (`src/selection/rdes.py`,
-> `se2.py`, `influence.py`) are all unimplemented (`raise NotImplementedError`),
-> and the `SBERT`/`Random`/`BM25`/`kNN` baselines named in
+> `Se²` and influence-based selection (`src/selection/se2.py`,
+> `influence.py`) are still unimplemented (`raise NotImplementedError`), and
+> the `SBERT`/`Random`/`BM25`/`kNN` baselines named in
 > `configs/experiments.yaml` have no corresponding implementation anywhere in
 > `src/`. `experiments/run_benchmark.py`, which the sections above tell you to
 > run to reproduce this table, does not exist in this repository (and never
-> has, per `git log`). Only `IDS` and `TopK+CoNE` have working implementations
-> today (`experiments/run_ids.py`, `experiments/run_topk_cone.py`). Treat the
+> has, per `git log`). `RDES` (`src/selection/rdes.py`) is now implemented —
+> ported from the tabular Q-learning approach used consistently across the
+> SST-5/AG News notebooks in `notebooks_archive/RDES/`, verified to run
+> end-to-end and reproducibly (same seed → identical Q-table and selections)
+> and to visibly balance relevance/diversity rather than picking randomly.
+> The CommonsenseQA notebook's RDES variants were *not* ported (they diverge
+> from each other and from the SST-5/AG News version — see the module
+> docstring in `rdes.py`), so treat RDES as unverified for CSQA specifically.
+> None of this means the CSQA column above is now trustworthy, and `IDS`,
+> `TopK+CoNE`, and `RDES` having working implementations still doesn't make
+> this table's actual numbers verified — no rerun has happened. Treat the
 > table below as illustrative/placeholder, not a verified result of this
 > codebase — until it's regenerated from a real run and that run is linked
 > here, or removed.
