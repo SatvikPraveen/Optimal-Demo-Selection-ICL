@@ -1,7 +1,8 @@
 # Optimal Demonstration Selection for In-Context Learning
 
+![Tests](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/actions/workflows/tests.yml/badge.svg)
 ![MIT License](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > **A modular, research-grade framework for benchmarking demonstration selection methods in few-shot in-context learning.**
@@ -74,7 +75,7 @@ In-context learning enables LLMs to perform tasks using only a few demonstration
 
 ### 🚀 Production-Ready Code
 
-- Unit tests and CI/CD ready
+- Unit/integration tests with CI on every push and PR (see badge above)
 - Proper dependency management
 - Virtual environment support
 - API key management
@@ -86,7 +87,8 @@ In-context learning enables LLMs to perform tasks using only a few demonstration
 
 ### Prerequisites
 
-- **Python**: 3.8 or higher
+- **Python**: 3.10 or higher (`requirements.txt` pins only lower bounds, and the
+  newest torch/transformers releases it currently resolves to require >=3.10)
 - **GPU**: CUDA-compatible GPU recommended for local models
 - **API Keys**: 
   - OpenAI API key (for GPT models)
@@ -129,6 +131,11 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+> For exact reproduction of reported results (or to match what CI installs),
+> use the pinned lock file instead: `pip install -r requirements-lock.txt`.
+> `requirements.txt` only pins lower bounds and is the loose, general-purpose
+> install path.
+
 ---
 
 ## 🎮 Quick Start
@@ -155,6 +162,10 @@ model = GPTModel(model_name="gpt-4o-mini")
 selector = IDS(k=5, embedding_model="all-MiniLM-L6-v2")
 inference = ICLInference(model=model)
 
+# Precompute training-pool embeddings once, instead of re-embedding all of
+# train_texts on every select_demonstrations() call in the loop below
+train_embeddings = selector.precompute_train_embeddings(train_texts)
+
 # Run ICL with selected demonstrations
 predictions = []
 for test_text in test_texts:
@@ -163,7 +174,8 @@ for test_text in test_texts:
         test_text, 
         train_texts,
         zero_shot_cot_fn=inference.run_zero_shot_cot,
-        icl_fn=lambda q, demos: inference.run_icl(demos, q)
+        icl_fn=lambda q, demos: inference.run_icl(demos, q),
+        precomputed_train_embeddings=train_embeddings
     )
     
     # Get predictions
@@ -178,6 +190,11 @@ print(f"F1: {metrics['f1']:.3f}")
 ```
 
 ### Quick Benchmark Test
+
+> ⚠️ `experiments/run_benchmark.py` does not exist in this repository yet —
+> only `experiments/run_ids.py` and `experiments/run_topk_cone.py` are
+> implemented. The command below is aspirational; see the provenance note in
+> [Results](#results) for details.
 
 ```bash
 # Run a quick test with small dataset
@@ -414,6 +431,24 @@ results/
 
 ### Sample Results
 
+> ⚠️ **Provenance note:** this table was introduced in the March 2026
+> "research-grade modular architecture" rewrite, and its numbers do not match
+> the per-model results reported in the pre-rewrite README (see
+> `docs/README_old.md` / git history before that commit) — it is not simply
+> carried over from the original notebook-based experiments either. More
+> importantly, it cannot have been produced by the current `src/`-based code:
+> `RDES`, `Se²`, and influence-based selection (`src/selection/rdes.py`,
+> `se2.py`, `influence.py`) are all unimplemented (`raise NotImplementedError`),
+> and the `SBERT`/`Random`/`BM25`/`kNN` baselines named in
+> `configs/experiments.yaml` have no corresponding implementation anywhere in
+> `src/`. `experiments/run_benchmark.py`, which the sections above tell you to
+> run to reproduce this table, does not exist in this repository (and never
+> has, per `git log`). Only `IDS` and `TopK+CoNE` have working implementations
+> today (`experiments/run_ids.py`, `experiments/run_topk_cone.py`). Treat the
+> table below as illustrative/placeholder, not a verified result of this
+> codebase — until it's regenerated from a real run and that run is linked
+> here, or removed.
+
 | Method | SST-5 | AG News | CSQA | Average | Rank |
 |--------|-------|---------|------|---------|------|
 | **IDS** | 0.82±0.02 | 0.76±0.01 | 0.68±0.03 | **0.75** | 1 |
@@ -422,7 +457,7 @@ results/
 | **SBERT** | 0.76±0.02 | 0.74±0.01 | 0.70±0.02 | **0.73** | 3 |
 | **Random** | 0.65±0.04 | 0.62±0.03 | 0.58±0.04 | **0.62** | 5 |
 
-*Results are Accuracy ± 95% CI across 3 runs*
+*Results are Accuracy ± 95% CI across 3 runs — see the provenance note above.*
 
 ### Key Findings
 
@@ -496,17 +531,25 @@ mydataset:
 # Install dev dependencies
 pip install -e ".[dev]"
 
-# Run tests
-pytest tests/
+# Installation/setup diagnostic (standalone script, not a pytest module)
+python tests/verify_setup.py
+
+# Run the pytest suite (unit + integration tests)
+pytest tests/test_functionality.py tests/test_project.py
 
 # With coverage
-pytest --cov=src tests/
+pytest --cov=src tests/test_functionality.py tests/test_project.py
 
 # Lint code
 black src/
 flake8 src/
 mypy src/
 ```
+
+See [`tests/README.md`](tests/README.md) for what each file covers and why
+`verify_setup.py` is run directly instead of through pytest. CI
+(`.github/workflows/tests.yml`) runs exactly these commands on Python 3.10
+and 3.11, with the sentence-transformers/gpt2/dataset network calls mocked.
 
 ### Code Quality
 
