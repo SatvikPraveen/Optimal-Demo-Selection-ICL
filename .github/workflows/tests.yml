@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # requirements.txt only pins lower bounds (torch>=2.0.0,
+        # transformers>=4.35.0, ...), so a fresh install resolves whatever is
+        # newest at install time. As of writing, the newest torch/transformers
+        # releases require Python >=3.10, so despite the README/setup.py
+        # ">=3.8" claim, 3.8/3.9 are not actually installable here today.
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Run installation verification
+        run: python tests/verify_setup.py
+
+      # test_functionality.py / test_project.py are pytest-style (test_*
+      # functions with real asserts); pytest genuinely discovers and runs
+      # them. verify_setup.py above is a standalone diagnostic script (no
+      # test_* functions), so it's invoked directly rather than via pytest.
+      #
+      # No OPENAI_API_KEY, network access to the HF Hub, or GPU is required:
+      # tests/conftest.py mocks the sentence-transformers embedding model,
+      # the gpt2 CoNE backend, and the SST-5/AG News dataset downloads.
+      - name: Run test suite
+        run: pytest tests/test_functionality.py tests/test_project.py -v

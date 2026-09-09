@@ -155,8 +155,12 @@ def main():
     print("🧪 Optimal Demo Selection ICL - Installation Verification")
     print("=" * 70)
     
+    # Virtual environment use is a local-dev convenience, not a correctness
+    # requirement (e.g. CI runners are already isolated per-job and never
+    # activate one), so it's reported but doesn't gate the overall result.
+    check_venv()
+
     checks = {
-        "Virtual Environment": check_venv(),
         "Directory Structure": check_structure(),
         "Configuration Files": check_configs(),
         "Dependencies": check_dependencies(),
