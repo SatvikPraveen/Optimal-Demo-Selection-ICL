@@ -40,8 +40,10 @@ class _FakeSentenceTransformer:
 def mock_sentence_transformer(monkeypatch):
     """Avoid downloading the real all-MiniLM-L6-v2 weights during CI."""
     import src.selection.ids as ids_module
+    import src.selection.rdes as rdes_module
 
     monkeypatch.setattr(ids_module, "SentenceTransformer", _FakeSentenceTransformer)
+    monkeypatch.setattr(rdes_module, "SentenceTransformer", _FakeSentenceTransformer)
     monkeypatch.setattr("sentence_transformers.SentenceTransformer", _FakeSentenceTransformer)
 
 

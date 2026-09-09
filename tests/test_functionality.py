@@ -13,7 +13,7 @@ import numpy as np
 from src.datasets import load_agnews, load_sst5
 from src.evaluation import compute_accuracy, compute_metrics
 from src.prompting import PromptBuilder
-from src.selection import IDS, TopKCoNE
+from src.selection import IDS, RDES, TopKCoNE
 from src.utils import set_seed, setup_logger
 
 
@@ -86,3 +86,33 @@ def test_ids_init(mock_sentence_transformer):
     selector = IDS(k=5, q=3)
     assert selector.k == 5
     assert selector.q == 3
+
+
+def test_rdes_init_and_selection(mock_sentence_transformer):
+    # Tiny synthetic pool, not a full-scale training run -- this only checks
+    # the online Q-learning loop runs and returns something sane, not that
+    # it has converged to a good policy (see the RDES port's own
+    # verification notes for that).
+    candidates = [f"demo text {i}" for i in range(6)]
+    labels = [0, 0, 1, 1, 2, 2]
+
+    selector = RDES(candidates, labels, num_classes=3, k=2)
+    assert selector.k == 2
+
+    selected = selector.select_demonstrations("a query")
+    assert len(selected) == 2
+    assert len(set(selected)) == 2  # no duplicate picks
+    assert all(0 <= i < len(candidates) for i in selected)
+    assert len(selector.q_table) > 0  # the online update actually ran
+
+
+def test_rdes_reproducible_with_seed(mock_sentence_transformer):
+    candidates = [f"demo text {i}" for i in range(6)]
+    labels = [0, 0, 1, 1, 2, 2]
+
+    def run():
+        set_seed(42)
+        selector = RDES(candidates, labels, num_classes=3, k=2, epsilon=0.5)
+        return [selector.select_demonstrations("a query") for _ in range(5)]
+
+    assert run() == run()
