@@ -27,13 +27,19 @@ class _FakeSentenceTransformer:
         pass
 
     def encode(self, text, **kwargs):
-        if isinstance(text, list):
+        if isinstance(text, (list, tuple)):
             return np.stack([self._encode_one(t) for t in text])
         return self._encode_one(text)
 
+    def get_sentence_embedding_dimension(self):
+        return self._DIM
+
     def _encode_one(self, text):
         # Deterministic per-text pseudo-embedding, no model weights involved.
-        rng = np.random.RandomState(abs(hash(text)) % (2**32))
+        # hash() is salted per process for str, so use a stable digest.
+        import zlib
+
+        rng = np.random.RandomState(zlib.crc32(text.encode("utf-8")) & 0xFFFFFFFF)
         return rng.rand(self._DIM).astype(np.float32)
 
 
@@ -42,10 +48,17 @@ def mock_sentence_transformer(monkeypatch):
     """Avoid downloading the real all-MiniLM-L6-v2 weights during CI."""
     import src.selection.ids as ids_module
     import src.selection.rdes as rdes_module
+    import src.utils.embeddings as emb_module
 
     monkeypatch.setattr(ids_module, "SentenceTransformer", _FakeSentenceTransformer)
     monkeypatch.setattr(rdes_module, "SentenceTransformer", _FakeSentenceTransformer)
+    monkeypatch.setattr(emb_module, "SentenceTransformer", _FakeSentenceTransformer)
     monkeypatch.setattr("sentence_transformers.SentenceTransformer", _FakeSentenceTransformer)
+    # The shared Embedder caches model instances by name; make sure a real
+    # model loaded by an earlier test never leaks into a mocked one.
+    emb_module.Embedder.clear_shared_models()
+    yield
+    emb_module.Embedder.clear_shared_models()
 
 
 class _FakeBatchEncoding(dict):
