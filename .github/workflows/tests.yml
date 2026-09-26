@@ -12,11 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # requirements.txt only pins lower bounds (torch>=2.0.0,
+        # pyproject.toml pins only lower bounds (torch>=2.0.0,
         # transformers>=4.35.0, ...), so a fresh install resolves whatever is
-        # newest at install time. As of writing, the newest torch/transformers
-        # releases require Python >=3.10, so despite the README/setup.py
-        # ">=3.8" claim, 3.8/3.9 are not actually installable here today.
+        # newest at install time; current torch/transformers need Python>=3.10.
         python-version: ["3.10", "3.11"]
 
     steps:
@@ -27,13 +25,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install package with dev extras
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e ".[dev]"
 
-      - name: Install package
-        run: pip install -e .
+      - name: Lint (ruff) and formatting check (black)
+        run: |
+          ruff check src tests experiments
+          black --check src tests experiments
 
       - name: Run installation verification
         run: python tests/verify_setup.py

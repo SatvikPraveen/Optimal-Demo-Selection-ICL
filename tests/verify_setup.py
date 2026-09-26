@@ -117,7 +117,7 @@ def check_configs():
         'configs/models.yaml',
         'configs/experiments.yaml',
         'requirements.txt',
-        'setup.py',
+        'pyproject.toml',
         '.gitignore',
     ]
     

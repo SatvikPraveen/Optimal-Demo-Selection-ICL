@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "optimal-demo-selection-icl"
+version = "0.2.0"
+description = "A reproducible benchmark of demonstration-selection methods for few-shot in-context learning."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Satvik Praveen" },
+  { name = "Jonathan Tong" },
+  { name = "Kamisetty Yamini Preethi" },
+  { name = "Vinay Chandra Bandi" },
+]
+keywords = ["in-context learning", "demonstration selection", "few-shot", "LLM", "benchmark"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "torch>=2.0.0",
+  "transformers>=4.35.0",
+  "accelerate>=0.24.0",
+  "datasets>=2.14.0",
+  "pandas>=2.0.0",
+  "numpy>=1.24.0",
+  "scipy>=1.11.0",
+  "scikit-learn>=1.3.0",
+  "sentence-transformers>=2.2.0",
+  "openai>=1.0.0",
+  "tqdm>=4.65.0",
+  "fsspec>=2023.12.0",
+  "pyyaml>=6.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+plots = ["matplotlib>=3.7.0", "seaborn>=0.12.0"]
+notebooks = ["jupyter>=1.0.0", "notebook>=7.0.0", "ipywidgets>=8.0.0"]
+dev = [
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "black>=23.0.0",
+  "ruff>=0.4.0",
+  "mypy>=1.4.0",
+  "pre-commit>=3.0.0",
+  "matplotlib>=3.7.0",
+  "seaborn>=0.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL"
+Repository = "https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL"
+Issues = "https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/issues"
+
+[project.scripts]
+icl-benchmark = "experiments.run_benchmark:main"
+icl-aggregate = "experiments.aggregate_results:main"
+
+[tool.setuptools.packages.find]
+include = ["src*", "experiments*"]
+exclude = ["tests*", "notebooks_archive*", "docs*", "paper*", "Figures*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+exclude = '''
+/(
+    \.git
+  | venv
+  | \.venv
+  | notebooks_archive
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["venv", ".venv", "notebooks_archive", "build", "dist", "paper"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+  "E501",  # line length handled by black
+  "B008",  # function calls in argument defaults (used for dataclass-style defaults)
+  "B905",  # zip(strict=) not available on 3.9 semantics we still mirror
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "experiments"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::FutureWarning",
+]
+markers = [
+  "slow: tests that load real model weights or hit the network (deselect with -m 'not slow')",
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+no_implicit_optional = true
+exclude = ["venv", "notebooks_archive", "build"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/models/gpt.py", "src/models/llama.py", "src/models/gemma.py"]

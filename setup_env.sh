@@ -1,38 +1,42 @@
 #!/bin/bash
 # ============================================================================
-# Environment Setup Script for Optimal Demo Selection ICL
+# Environment setup for Optimal Demo Selection ICL
+#
+# Creates ./venv, installs the package in editable mode with the dev extras
+# (pytest, black, ruff, mypy, matplotlib) and installs the pre-commit hooks.
+# Pass --lock to install the exact pinned versions from requirements-lock.txt
+# instead of the loose lower bounds in pyproject.toml.
 # ============================================================================
 
-set -e  # Exit on error
+set -euo pipefail
 
-echo "======================================================================"
-echo "Setting up virtual environment for Optimal Demo Selection ICL"
-echo "======================================================================"
+PYTHON=${PYTHON:-python3}
+USE_LOCK=0
+for arg in "$@"; do
+  case "$arg" in
+    --lock) USE_LOCK=1 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+  esac
+done
 
-# Create virtual environment
-echo "Creating virtual environment in ./venv..."
-python3 -m venv venv
-
-# Activate virtual environment
-echo "Activating virtual environment..."
+echo "Creating virtual environment in ./venv with $PYTHON ..."
+"$PYTHON" -m venv venv
+# shellcheck disable=SC1091
 source venv/bin/activate
-
-# Upgrade pip
-echo "Upgrading pip..."
 pip install --upgrade pip
 
-# Install dependencies
-echo "Installing dependencies from requirements.txt..."
-pip install -r requirements.txt
+if [ "$USE_LOCK" = "1" ]; then
+  echo "Installing pinned dependencies from requirements-lock.txt ..."
+  pip install -r requirements-lock.txt
+fi
+
+echo "Installing package (editable) with dev extras ..."
+pip install -e ".[dev]"
+
+if command -v pre-commit >/dev/null 2>&1; then
+  pre-commit install >/dev/null && echo "pre-commit hooks installed."
+fi
 
 echo ""
-echo "======================================================================"
-echo "✓ Setup complete!"
-echo "======================================================================"
-echo ""
-echo "To activate the environment, run:"
-echo "  source venv/bin/activate"
-echo ""
-echo "To deactivate, run:"
-echo "  deactivate"
-echo ""
+echo "Setup complete. Activate with:  source venv/bin/activate"
+echo "Run the test-suite with:        pytest"

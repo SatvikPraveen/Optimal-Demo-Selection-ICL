@@ -14,8 +14,8 @@ Modules:
 - utils: Utilities and helpers
 """
 
-__version__ = "0.1.0"
-__author__ = "Your Name"
+__version__ = "0.2.0"
+__author__ = "Satvik Praveen, Jonathan Tong, Kamisetty Yamini Preethi, Vinay Chandra Bandi"
 
 from . import datasets
 from . import models
