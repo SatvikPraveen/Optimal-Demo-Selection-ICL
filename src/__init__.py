@@ -17,12 +17,7 @@ Modules:
 __version__ = "0.2.0"
 __author__ = "Satvik Praveen, Jonathan Tong, Kamisetty Yamini Preethi, Vinay Chandra Bandi"
 
-from . import datasets
-from . import models
-from . import selection
-from . import prompting
-from . import evaluation
-from . import utils
+from . import datasets, evaluation, models, prompting, selection, utils
 
 __all__ = [
     "datasets",

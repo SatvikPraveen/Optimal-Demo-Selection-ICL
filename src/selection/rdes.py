@@ -53,9 +53,10 @@ with how IDS and TopKCoNE rely on external seeding rather than seeding
 themselves.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from typing import Dict, List, Optional, Sequence, Tuple
 
 
 class RDES:
@@ -80,8 +81,8 @@ class RDES:
         alpha: float = 0.1,
         gamma: float = 0.9,
         epsilon: float = 0.2,
-        q_table: Optional[Dict[Tuple[Tuple[int, ...], int], float]] = None,
-        device: Optional[str] = None,
+        q_table: dict[tuple[tuple[int, ...], int], float] | None = None,
+        device: str | None = None,
     ):
         """
         Args:
@@ -108,7 +109,7 @@ class RDES:
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
-        self.q_table: Dict[Tuple[Tuple[int, ...], int], float] = (
+        self.q_table: dict[tuple[tuple[int, ...], int], float] = (
             q_table if q_table is not None else {}
         )
 
@@ -117,7 +118,7 @@ class RDES:
             self.candidates, convert_to_numpy=True
         )
 
-    def _diversity_score(self, selected_indices: List[int]) -> float:
+    def _diversity_score(self, selected_indices: list[int]) -> float:
         """Entropy of the label distribution among selected demos."""
         counts = np.zeros(self.num_classes)
         for idx in selected_indices:
@@ -125,10 +126,10 @@ class RDES:
         probs = counts / counts.sum()
         return float(-np.sum(probs * np.log(probs + 1e-9)))
 
-    def _state_key(self, selected: List[int]) -> Tuple[int, ...]:
+    def _state_key(self, selected: list[int]) -> tuple[int, ...]:
         return tuple(sorted(selected))
 
-    def _reward(self, query_embedding: np.ndarray, selected_indices: List[int]) -> float:
+    def _reward(self, query_embedding: np.ndarray, selected_indices: list[int]) -> float:
         demo_embeddings = self.candidate_embeddings[selected_indices]
         relevance = float(np.mean(np.dot(demo_embeddings, query_embedding)))
 
@@ -138,7 +139,7 @@ class RDES:
 
         return 0.5 * normalized_diversity + 0.5 * relevance
 
-    def select_demonstrations(self, query: str) -> List[int]:
+    def select_demonstrations(self, query: str) -> list[int]:
         """
         Select k demonstration indices for `query`.
 
@@ -152,7 +153,7 @@ class RDES:
             Indices into `candidates` of the selected demonstrations, in
             selection order.
         """
-        selected: List[int] = []
+        selected: list[int] = []
         query_embedding = self.embedding_model.encode(query, convert_to_numpy=True)
 
         for _ in range(self.k):
@@ -179,8 +180,8 @@ class RDES:
 
             old_value = self.q_table.get((current_state_key, action), 0.0)
             self.q_table[(current_state_key, action)] = (
-                (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
-            )
+                1 - self.alpha
+            ) * old_value + self.alpha * (reward + self.gamma * next_max)
 
         return selected
 
