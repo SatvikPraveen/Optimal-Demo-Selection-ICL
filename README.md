@@ -5,13 +5,13 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-> **A modular, research-grade framework for benchmarking demonstration selection methods in few-shot in-context learning.**
+> **A modular framework for benchmarking demonstration selection methods in few-shot in-context learning.**
 
 This repository implements and evaluates multiple demonstration selection strategies for In-Context Learning (ICL) with large language models. We provide a clean, extensible codebase for reproducing and extending research on optimal example selection.
 
 ---
 
-## 👥 Team Members
+## Team Members
 
 - **Kamisetty Yamini Preethi** • yamini_preethi_k@tamu.edu
 - **Jonathan Tong** • tongjo@tamu.edu
@@ -20,7 +20,7 @@ This repository implements and evaluates multiple demonstration selection strate
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -37,7 +37,7 @@ This repository implements and evaluates multiple demonstration selection strate
 
 ---
 
-## 🎯 Overview
+## Overview
 
 In-context learning enables LLMs to perform tasks using only a few demonstration examples in the prompt. However, **which demonstrations to select** dramatically impacts performance. This project benchmarks five state-of-the-art selection algorithms:
 
@@ -52,20 +52,20 @@ In-context learning enables LLMs to perform tasks using only a few demonstration
 - **3 tasks**: Sentiment (SST-5), Topic Classification (AG News), Commonsense Reasoning (CSQA)
 - **3+ models**: GPT-4o, LLaMA-3.2-3B, Gemma-2B, GPT-2
 - **5 algorithms**: TopK+CoNE, IDS, RDES, Se², Influence-based
-- **Rigorous evaluation**: Multiple seeds, statistical testing, comprehensive metrics
+- **Rigorous evaluation**: Multiple seeds, statistical testing, a broad set of metrics
 
 ---
 
-## ✨ Features
+## Features
 
-### 🏗️ Research-Grade Architecture
+### Architecture
 
 - **Modular design**: Clean separation of concerns (datasets, models, selection, evaluation)
 - **Reproducible**: Seed control, detailed logging, configuration management
 - **Extensible**: Add new methods, datasets, or models with minimal code changes
 - **Type-safe**: Type hints throughout for better code quality
 
-### 🧪 Comprehensive Benchmarking
+### Benchmarking
 
 - Multiple baseline methods (Random, BM25, SBERT)
 - Statistical significance testing
@@ -73,7 +73,7 @@ In-context learning enables LLMs to perform tasks using only a few demonstration
 - Computational cost tracking
 - Visualization tools
 
-### 🚀 Production-Ready Code
+### Engineering
 
 - Unit/integration tests with CI on every push and PR (see badge above)
 - Proper dependency management
@@ -83,7 +83,7 @@ In-context learning enables LLMs to perform tasks using only a few demonstration
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -138,7 +138,7 @@ pip install -e .
 
 ---
 
-## 🎮 Quick Start
+## Quick Start
 
 ### Example: Run IDS on SST-5
 
@@ -191,7 +191,7 @@ print(f"F1: {metrics['f1']:.3f}")
 
 ### Quick Benchmark Test
 
-> ⚠️ `experiments/run_benchmark.py` does not exist in this repository yet —
+> **Note:** `experiments/run_benchmark.py` does not exist in this repository yet —
 > only `experiments/run_ids.py` and `experiments/run_topk_cone.py` are
 > implemented. The command below is aspirational; see the provenance note in
 > [Results](#results) for details.
@@ -206,41 +206,41 @@ python experiments/run_benchmark.py \\
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 optimal-demo-selection-icl/
 │
-├── 📄 README.md                    # This file
-├── 📄 requirements.txt             # Python dependencies
-├── 📄 setup.py                     # Package installation configuration
-├── 📄 .gitignore                   # Git ignore rules (includes venv/)
-├── 📄 setup_env.sh                # Automated environment setup
+├── README.md                       # This file
+├── requirements.txt                # Python dependencies
+├── setup.py                        # Package installation configuration
+├── .gitignore                      # Git ignore rules (includes venv/)
+├── setup_env.sh                   # Automated environment setup
 │
-├── 📁 venv/                        # Virtual environment (in repo, but gitignored)
+├── venv/                           # Virtual environment (in repo, but gitignored)
 │
-├── 📁 configs/                     # YAML configuration files
+├── configs/                        # YAML configuration files
 │   ├── datasets.yaml              # Dataset configurations
 │   ├── models.yaml                # Model configurations  
 │   └── experiments.yaml           # Experiment configurations
 │
-├── 📁 src/                         # 🔥 Main source code (modular)
+├── src/                            # Main source code (modular)
 │   ├── __init__.py
 │   │
-│   ├── 📁 datasets/               # Dataset loaders
+│   ├── datasets/                  # Dataset loaders
 │   │   ├── __init__.py
 │   │   ├── load_sst5.py          # SST-5 sentiment dataset
 │   │   ├── load_agnews.py        # AG News topic classification
 │   │   └── load_csqa.py          # CommonsenseQA
 │   │
-│   ├── 📁 models/                 # LLM model interfaces
+│   ├── models/                    # LLM model interfaces
 │   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class
 │   │   ├── gpt.py                # OpenAI GPT models
 │   │   ├── llama.py              # Meta LLaMA models
 │   │   └── gemma.py              # Google Gemma models
 │   │
-│   ├── 📁 selection/              # 🧠 Demonstration selection algorithms
+│   ├── selection/                 # Demonstration selection algorithms
 │   │   ├── __init__.py
 │   │   ├── topk_cone.py          # TopK + CoNE
 │   │   ├── ids.py                # Iterative Demonstration Selection
@@ -248,38 +248,38 @@ optimal-demo-selection-icl/
 │   │   ├── se2.py                # Se²
 │   │   └── influence.py          # Influence-based selection
 │   │
-│   ├── 📁 prompting/              # Prompt construction & inference
+│   ├── prompting/                 # Prompt construction & inference
 │   │   ├── __init__.py
 │   │   ├── prompt_builder.py     # Prompt templates
 │   │   └── inference.py          # ICL inference engine
 │   │
-│   ├── 📁 evaluation/             # Metrics & benchmarking
+│   ├── evaluation/                # Metrics & benchmarking
 │   │   ├── __init__.py
 │   │   └── metrics.py            # Accuracy, F1, confidence intervals
 │   │
-│   └── 📁 utils/                  # Utilities
+│   └── utils/                     # Utilities
 │       ├── __init__.py
 │       ├── seed.py               # Reproducibility utilities
 │       └── logging.py            # Logging configuration
 │
-├── 📁 experiments/                # 🧪 Experiment scripts
+├── experiments/                   # Experiment scripts
 │   ├── run_topk_cone.py
 │   ├── run_ids.py
 │   ├── run_rdes.py
 │   └── run_benchmark.py          # Main benchmarking script
 │
-├── 📁 notebooks/                  # 📊 Jupyter notebooks for analysis
+├── notebooks/                     # Jupyter notebooks for analysis
 │   └── analysis.ipynb
 │
-├── 📁 results/                    # 📈 Experiment results
+├── results/                       # Experiment results
 │   ├── raw/                      # Raw predictions (.gitignored)
 │   ├── processed/                # Aggregated metrics (.gitignored)
 │   └── plots/                    # Visualizations (.gitignored)
 │
-├── 📁 Figures/                    # Paper figures
-├── 📁 paper/                      # Research paper (PDF)
+├── Figures/                       # Paper figures
+├── paper/                         # Research paper (PDF)
 │
-└── 📁 Old Notebooks/              # Legacy notebooks (for reference)
+└── Old Notebooks/                 # Legacy notebooks (for reference)
     ├── TopK+CoNE/
     ├── IDS/
     ├── RDES/
@@ -289,14 +289,14 @@ optimal-demo-selection-icl/
 
 ### Key Design Principles
 
-✅ **Separation of Concerns**: Each module has a single responsibility  
-✅ **Configuration Over Code**: YAML configs for easy experimentation  
-✅ **Reproducibility First**: Seed control, logging, version tracking  
-✅ **Easy Extension**: Add new methods via inheritance, not modification
+- **Separation of Concerns**: Each module has a single responsibility
+- **Configuration Over Code**: YAML configs for easy experimentation
+- **Reproducibility First**: Seed control, logging, version tracking
+- **Easy Extension**: Add new methods via inheritance, not modification
 
 ---
 
-## 🧠 Selection Strategies
+## Selection Strategies
 
 ### Implemented Methods
 
@@ -325,7 +325,7 @@ optimal-demo-selection-icl/
 
 ---
 
-## 🤖 Models & Datasets
+## Models & Datasets
 
 ### Supported Models
 
@@ -349,7 +349,7 @@ optimal-demo-selection-icl/
 
 ---
 
-## 🔬 Running Experiments
+## Running Experiments
 
 ### 1. Single Method Evaluation
 
@@ -411,7 +411,7 @@ python experiments/run_benchmark.py --config my_experiment.yaml
 
 ---
 
-## 📊 Results
+## Results
 
 ### Result Files
 
@@ -431,7 +431,7 @@ results/
 
 ### Sample Results
 
-> ⚠️ **Provenance note:** this table was introduced in the March 2026
+> **Provenance note:** this table was introduced in the March 2026
 > "research-grade modular architecture" rewrite, and its numbers do not match
 > the per-model results reported in the pre-rewrite README (see
 > `docs/README_old.md` / git history before that commit) — it is not simply
@@ -478,7 +478,7 @@ results/
 
 ---
 
-## 🛠️ Development Guide
+## Development Guide
 
 ### Adding a New Selection Method
 
@@ -570,7 +570,7 @@ We use:
 
 ---
 
-## 📚 Citation
+## Citation
 
 If you use this code in your research, please cite:
 
@@ -586,7 +586,7 @@ If you use this code in your research, please cite:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please:
 
@@ -601,13 +601,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **HuggingFace** for Transformers and Datasets libraries
 - **OpenAI** for GPT API access
@@ -617,7 +617,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📧 Contact
+## Contact
 
 For questions or collaboration:
 
@@ -627,7 +627,7 @@ For questions or collaboration:
 
 ---
 
-## 🔗 Related Resources
+## Related Resources
 
 ### Papers
 - [Chain-of-Thought Prompting](https://arxiv.org/abs/2201.11903)
@@ -639,7 +639,4 @@ For questions or collaboration:
 - [Sentence-Transformers](https://github.com/UKPLab/sentence-transformers)
 - [OpenICL](https://github.com/Shark-NLP/OpenICL)
 
----
-
-**⭐ If you find this project useful, please consider giving it a star! ⭐**
 
