@@ -50,7 +50,8 @@ for m in $MODELS; do
 done
 
 # Slurm task logs whose task has finished (no longer in the queue).
-active=$(squeue -u "$USER" -h -o "%A_%a" 2>/dev/null | tr '\n' ' ')
+# %A = array master job id, %K = array index (matches the %A_%a output name).
+active=$(squeue -u "$USER" -h -o "%A_%K" 2>/dev/null | tr '\n' ' ')
 for f in logs/icl-grid_*_*.out logs/icl-grid_*_*.err; do
   [ -f "$f" ] || continue
   id=$(basename "$f" | sed -E 's/^icl-grid_([0-9]+)_([0-9]+)\.(out|err)$/\1_\2/')
