@@ -1,92 +1,103 @@
+<div align="center">
+
 # Optimal Demonstration Selection for In-Context Learning
 
-![Tests](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/actions/workflows/tests.yml/badge.svg)
-![MIT License](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+**A reproducible benchmark of demonstration-selection methods for few-shot in-context learning.**
+
+[![Tests](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/actions/workflows/tests.yml/badge.svg)](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/actions/workflows/tests.yml)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Linted with ruff](https://img.shields.io/badge/linted%20with-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
-A reproducible benchmark of demonstration-selection methods for few-shot
-in-context learning (ICL). Eight selectors, three tasks and any causal LM
-(local HuggingFace checkpoints or the OpenAI API) share one prompt format, one
-prediction rule, one evaluation protocol and one config-driven runner, so
-methods can be compared like-for-like with confidence intervals and paired
-significance tests.
+[Overview](#overview) ·
+[Installation](#installation) ·
+[Quick Start](#quick-start) ·
+[Benchmark](#running-the-benchmark) ·
+[Protocol](#evaluation-protocol) ·
+[Results](#results) ·
+[Extending](#extending-the-benchmark) ·
+[Citation](#citation)
 
-**Team:** Kamisetty Yamini Preethi, Jonathan Tong, Satvik Praveen, Vinay Chandra Bandi (Texas A&M University).
+</div>
 
-## Contents
+---
 
-- [What is in the box](#what-is-in-the-box)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Running the benchmark](#running-the-benchmark)
-- [Evaluation protocol](#evaluation-protocol)
-- [Results](#results)
-- [Project structure](#project-structure)
-- [Extending the benchmark](#extending-the-benchmark)
-- [Development](#development)
-- [Citation](#citation)
+## Overview
 
-## What is in the box
+Which examples go into a few-shot prompt matters as much as the model that reads it. This repository provides a
+controlled setting in which to answer that question: eight selection strategies, three tasks and any causal language
+model share **one prompt template, one prediction rule, one evaluation protocol and one configuration-driven
+runner**. Every result is produced with confidence intervals, paired significance tests and a manifest that records
+the exact code and library versions that generated it.
 
-**Selection methods** (`src/selection/`, details and references in [docs/methods.md](docs/methods.md)):
+### Selection methods
 
-| Method | Key idea | Uses the LM at selection time |
-|---|---|---|
-| `random` | uniform random demonstrations (lower bound) | no |
-| `topk` (SBERT / kNN) | nearest neighbours in sentence-embedding space | no |
-| `bm25` | lexical retrieval (Okapi BM25) | no |
-| `topk_cone` | Top-K retrieval re-ranked by conditional entropy of the query (Peng et al., 2024) | scorer LM |
-| `ids` | iterative selection driven by zero-shot chain-of-thought rationales (Qin et al., 2023) | evaluated model |
-| `rdes` | tabular Q-learning balancing relevance and label diversity (Wang et al., 2024) | no |
-| `se2` | sequential beam search over demonstration order scored by the LM (Liu et al., 2024) | scorer LM |
-| `influence` | datamodel-style subset-sampling influence scores, one fixed prompt (Nguyen & Wong, 2023) | evaluated model, once |
+| Method | Key idea | Reference | LM used during selection |
+|:--|:--|:--|:--|
+| `random` | Uniformly random demonstrations (lower bound) | — | — |
+| `topk` | Nearest neighbours in sentence-embedding space (SBERT / kNN) | Liu et al., 2022 | — |
+| `bm25` | Lexical retrieval with Okapi BM25 | Robertson & Zaragoza, 2009 | — |
+| `topk_cone` | Top-K retrieval re-ranked by the conditional entropy of the query | Peng et al., 2024 | scorer |
+| `ids` | Iterative retrieval guided by zero-shot chain-of-thought rationales | Qin et al., 2023 | evaluated model |
+| `rdes` | Tabular Q-learning that balances relevance and label diversity | Wang et al., 2024 | — |
+| `se2` | Sequential beam search over demonstration order, scored by the LM | Liu et al., 2024 | scorer |
+| `influence` | Subset-sampling influence estimates; one fixed prompt for all queries | Nguyen & Wong, 2023 | evaluated model, once |
 
-**Tasks** (`src/datasets/tasks.py`): SST-5 (5-way sentiment), AG News (4-way
-topic), CommonsenseQA (5-way multiple choice, scored on the answer letter).
+Algorithms, costs and every deliberate deviation from the original implementations are documented in
+[`docs/methods.md`](docs/methods.md).
 
-**Models** (`src/models/`): any `AutoModelForCausalLM` checkpoint
-(`HFCausalModel`, with LLaMA/Gemma aliases), OpenAI chat models (`GPTModel`),
-and a deterministic `DummyModel` so the whole pipeline runs in CI.
+### Tasks and models
 
-**Evaluation** (`src/evaluation/`): accuracy and macro-F1, percentile
-bootstrap CIs over test examples, mean ± std over seeds, exact McNemar and
-paired-bootstrap tests against a baseline, parse-failure rate, and per-run
-cost (fit / selection / inference time, calls, tokens).
+| | |
+|:--|:--|
+| **Tasks** | SST-5 (5-way sentiment) · AG News (4-way topic) · CommonsenseQA (5-way multiple choice) |
+| **Local models** | Any `AutoModelForCausalLM` checkpoint via `HFCausalModel` (LLaMA, Gemma, GPT-2, GPT-Neo, …) |
+| **API models** | OpenAI chat models via `GPTModel` |
+| **Testing** | A deterministic `DummyModel` runs the entire pipeline in CI without weights, keys or a GPU |
+
+### Evaluation
+
+Accuracy and macro-F1 · percentile-bootstrap confidence intervals over test examples · mean ± std over seeds ·
+exact McNemar and paired-bootstrap tests against a baseline · parse-failure rate · fit, selection and inference
+cost in wall time, calls and tokens.
+
+---
 
 ## Installation
 
-Python 3.10 or newer. A GPU is recommended for local models but nothing here
-requires one.
+Requires Python 3.10 or newer. A GPU is recommended for local models but not required.
 
 ```bash
 git clone https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL.git
 cd Optimal-Demo-Selection-ICL
-./setup_env.sh              # creates ./venv, installs the package with dev extras and pre-commit hooks
+./setup_env.sh                 # creates ./venv, installs the package with dev extras and pre-commit hooks
 source venv/bin/activate
 ```
 
-or manually:
+Or manually:
 
 ```bash
 python -m venv venv && source venv/bin/activate
-pip install -e ".[dev]"     # core + pytest/black/ruff/mypy/matplotlib
+pip install -e ".[dev]"        # core + pytest, black, ruff, mypy, matplotlib
 ```
 
-For a bit-for-bit environment use the lock file: `pip install -r requirements-lock.txt`.
+| Need | Command |
+|:--|:--|
+| Exact, pinned environment | `pip install -r requirements-lock.txt` |
+| API keys and tokens | `cp .env.example .env`, then set `OPENAI_API_KEY` and `HF_TOKEN` |
+| Jupyter support | `pip install -e ".[notebooks]"` |
 
-API keys and tokens are read from the environment (`cp .env.example .env`
-and fill in `OPENAI_API_KEY` / `HF_TOKEN`; the runner loads `.env` if
-`python-dotenv` is installed).
+---
 
-## Quick start
+## Quick Start
 
 ```python
 from src.datasets import get_task, load_split, load_train_without_holdout
+from src.evaluation import bootstrap_ci, compute_metrics
 from src.models import HFCausalModel
 from src.prompting import ICLInference, PromptBuilder
 from src.selection import TopKCoNE
-from src.evaluation import compute_metrics, bootstrap_ci
 from src.utils import set_seed
 
 set_seed(0)
@@ -94,153 +105,145 @@ task = get_task("sst5")
 train_texts, train_labels = load_train_without_holdout(task, num_samples=500, seed=0)
 test_texts, test_labels = load_split(task, "test", num_samples=100, seed=0)
 
-model = HFCausalModel("gpt2")                                  # or GPTModel("gpt-4o-mini")
-inference = ICLInference(model, PromptBuilder(task.instruction))  # scores label log-probs for HF models
+model = HFCausalModel("gpt2")                                     # or GPTModel("gpt-4o-mini")
+inference = ICLInference(model, PromptBuilder(task.instruction))  # ranks label log-probs for local models
 
-selector = TopKCoNE(k=5, retrieve_k=30, scorer=model.scorer)   # any BaseSelector works here
+selector = TopKCoNE(k=5, retrieve_k=30, scorer=model.scorer)      # any BaseSelector works here
 selector.fit(task.format_demos(train_texts, train_labels), train_labels)
 
-preds = []
+predictions = []
 for text in test_texts:
     query = task.format_query(text)
-    demo_idx = selector.select(query)
-    demos = [selector.candidates[i] for i in demo_idx]
-    preds.append(inference.predict(demos, query, task)["prediction"])
+    demos = [selector.candidates[i] for i in selector.select(query)]
+    predictions.append(inference.predict(demos, query, task)["prediction"])
 
-print(compute_metrics(preds, test_labels))
-print(bootstrap_ci([p == y for p, y in zip(preds, test_labels)]))
+print(compute_metrics(predictions, test_labels))
+print(bootstrap_ci([p == y for p, y in zip(predictions, test_labels)]))
 ```
 
-## Running the benchmark
+---
 
-Everything is driven by `configs/experiments.yaml` (benchmarks, defaults,
-method hyper-parameters) and `configs/models.yaml` (model registry).
+## Running the Benchmark
+
+Experiments are defined in [`configs/experiments.yaml`](configs/experiments.yaml) (benchmarks, defaults and
+method hyper-parameters) and [`configs/models.yaml`](configs/models.yaml) (model registry).
 
 ```bash
-# All 8 methods on SST-5 with the dummy model: seconds, no GPU or API key.
+# All eight methods on SST-5 with the dummy model. Runs in seconds; no GPU or API key.
 python experiments/run_benchmark.py --benchmark smoke
 
-# A real run on a local GPT-2 (downloads ~500 MB the first time).
+# A real run on a local GPT-2 (first run downloads the checkpoint).
 python experiments/run_benchmark.py --benchmark quick_test
 
-# The full grid: 3 datasets x 3 models x 8 methods x 3 seeds. Override anything from the CLI.
+# The full grid: 3 datasets × 3 models × 8 methods × 3 seeds. Any setting can be overridden on the CLI.
 python experiments/run_benchmark.py --benchmark full_benchmark --models llama-3.2-3b --seeds 0 1 2 --resume
 
 # k-shot ablation (writes to results/raw/k{1,3,5,8}/).
 python experiments/run_benchmark.py --benchmark ablation_k
 
-# Tables + significance tests, then plots.
+# Tables and significance tests, then figures.
 python experiments/aggregate_results.py --baseline random
 python experiments/plot_results.py
 ```
 
-`--dry-run` lists the runs a benchmark expands to; `--resume` skips runs
-whose result file already exists, so a long grid can be restarted.
+`--dry-run` lists the runs a benchmark expands to. `--resume` skips runs whose result file already exists, so a
+long grid can be interrupted and restarted.
 
-Each run writes `results/raw/<dataset>__<model>__<method>__seed<seed>.json` with:
+### Outputs
 
-- `records`: per test example, the selected pool indices and their labels,
-  the prediction, the gold label and the raw model output;
-- `metrics`: accuracy, macro-F1, precision, recall, bootstrap 95% CI,
-  parse-failure rate (and `ids_majority_vote_accuracy` for IDS);
-- `cost`: fit / selection / inference wall time, model calls and tokens
-  split into fit-time and evaluation-time usage, scorer forward passes;
-- `selector`, `model`, `task`, `config`: every hyper-parameter of the run;
-- `manifest`: git commit (and whether the tree was dirty), Python and
-  package versions, CUDA device.
+Each run writes `results/raw/<dataset>__<model>__<method>__seed<seed>.json`:
 
-`aggregate_results.py` produces `results/processed/runs.csv`, `summary.csv`,
-`significance.csv` and `summary.md` (mean ± std over seeds per dataset,
-model and method, plus Δ accuracy vs the baseline with a paired-bootstrap CI
-and an exact McNemar p-value pooled over seeds).
+| Section | Contents |
+|:--|:--|
+| `records` | Per test example: selected pool indices and their labels, prediction, gold label, raw model output |
+| `metrics` | Accuracy, macro-F1, precision, recall, bootstrap 95 % CI, parse-failure rate |
+| `cost` | Fit / selection / inference wall time; model calls and tokens for fitting and for evaluation; scorer passes |
+| `selector`, `model`, `task`, `config` | Every hyper-parameter of the run |
+| `manifest` | Git commit and dirty flag, Python and package versions, CUDA device |
 
-## Evaluation protocol
+`aggregate_results.py` writes `runs.csv`, `summary.csv`, `significance.csv` and `summary.md` to
+`results/processed/`: mean ± std over seeds per dataset, model and method, and Δ accuracy against the baseline with
+a paired-bootstrap interval and an exact McNemar *p*-value pooled over seeds.
 
-- **Splits.** The demonstration pool is sampled from the training split
-  and is disjoint from the validation slice (used only by `influence`) and
-  from the test set. CommonsenseQA's labeled validation split serves as its
-  test set because the official test split is unlabeled.
-- **Prompts.** One template per task (`src/datasets/tasks.py`):
-  instruction, then `k` demonstrations, then the query.
-- **Prediction.** Local models rank the label verbalizers by
-  `log p(label | prompt)` (`prediction_mode: score`); API models generate
-  and the text is mapped onto the label set by a documented decoding rule
-  (`prediction_mode: generate`). Unparseable outputs count as wrong and are
-  reported separately.
-- **Uncertainty.** Bootstrap CIs over test examples within a run; mean ±
-  sample std and a t-interval over seeds; paired McNemar and bootstrap
-  tests between methods evaluated on the same examples.
-- **Reproducibility.** `set_seed` seeds Python, NumPy and torch; every
-  stochastic selector owns a seeded generator; result files carry the
-  commit hash and library versions.
+---
+
+## Evaluation Protocol
+
+| Aspect | Design |
+|:--|:--|
+| **Splits** | The demonstration pool is sampled from the training split and kept disjoint from the validation slice (used only by `influence`) and the test set. CommonsenseQA's labeled validation split serves as its test set because the official test split is unlabeled. |
+| **Prompts** | One template per task in `src/datasets/tasks.py`: an instruction, *k* demonstrations, then the query. |
+| **Prediction** | Local models rank the label verbalizers by log *p*(label \| prompt). API models generate text that is mapped onto the label set by a documented decoding rule; unparseable outputs count as errors and are reported separately. |
+| **Uncertainty** | Bootstrap CIs over test examples within a run; mean ± sample std and a *t*-interval over seeds; paired McNemar and bootstrap tests between methods evaluated on the same examples. |
+| **Reproducibility** | `set_seed` seeds Python, NumPy and torch; every stochastic selector owns a seeded generator; every result file carries the commit hash and library versions. |
+
+---
 
 ## Results
 
-No benchmark table is published from the current code yet. Producing one is
-a single command (`--benchmark full_benchmark` followed by
-`aggregate_results.py`), and this README will be updated with the resulting
-`summary.md` once a full grid has been run on the target models.
+No benchmark table has yet been generated with the current code. Producing one is a single command
+(`--benchmark full_benchmark` followed by `aggregate_results.py`), and this section will be populated from the
+resulting `summary.md` once the full grid has been run on the target models.
 
-The accuracies obtained by the original notebook experiments (2024) are kept
-in [docs/legacy_results.md](docs/legacy_results.md) together with the figures
-in `Figures/`. They were produced by the archived notebooks, not by `src/`,
-with different prompts, data slices and, in places, flawed scoring, so they are
-not comparable to numbers produced by this benchmark; [docs/methods.md](docs/methods.md)
-lists what changed in each method and why.
+The accuracies obtained by the original notebook experiments (2024) are preserved in
+[`docs/legacy_results.md`](docs/legacy_results.md) alongside the figures in `Figures/`. They were produced by the
+archived notebooks with different prompts, data slices and, in places, flawed scoring, and are therefore not
+comparable to numbers produced by this benchmark. [`docs/methods.md`](docs/methods.md) lists what changed in each
+method and why.
 
-## Project structure
+---
+
+## Project Structure
 
 ```
 configs/
-  experiments.yaml      benchmarks, defaults, method hyper-parameters
-  models.yaml           model registry (type, checkpoint, kwargs)
-  datasets.yaml         dataset metadata (informational; templates live in src/datasets/tasks.py)
+├── experiments.yaml        benchmarks, defaults, method hyper-parameters
+├── models.yaml             model registry (backend, checkpoint, kwargs)
+└── datasets.yaml           dataset metadata (templates live in src/datasets/tasks.py)
 experiments/
-  run_benchmark.py      config-driven runner (one JSON per run)
-  aggregate_results.py  tables + significance tests
-  plot_results.py       accuracy bars with CIs, cost-vs-accuracy scatter
+├── run_benchmark.py        configuration-driven runner, one JSON per run
+├── aggregate_results.py    tables and significance tests
+└── plot_results.py         accuracy bars with CIs, cost-vs-accuracy scatter
 src/
-  datasets/             loaders (SST-5, AG News, CSQA) and the Task registry
-  models/               BaseModel + usage tracking, HFCausalModel, GPTModel, DummyModel, LMScorer
-  selection/            BaseSelector, baselines, TopKCoNE, IDS, RDES, Se2, InfluenceSelection, registry
-  prompting/            PromptBuilder, ICLInference.predict
-  evaluation/           metrics, parsing, stats (bootstrap, McNemar, permutation)
-  utils/                seeding, logging, shared Embedder, environment manifest
-tests/                  pytest suite; all network boundaries mocked (no GPU / keys needed)
-docs/                   methods.md (algorithms and deviations), legacy_results.md
-notebooks_archive/      the original course-project notebooks (reference only)
-Figures/, paper/        figures and report from the original project
+├── datasets/               loaders (SST-5, AG News, CSQA) and the Task registry
+├── models/                 BaseModel with usage tracking, HFCausalModel, GPTModel, DummyModel, LMScorer
+├── selection/              BaseSelector, baselines, TopKCoNE, IDS, RDES, Se2, InfluenceSelection, registry
+├── prompting/              PromptBuilder and ICLInference.predict
+├── evaluation/             metrics, prediction parsing, statistics
+└── utils/                  seeding, logging, shared Embedder, environment manifest
+tests/                      pytest suite; all network boundaries are mocked
+docs/                       methods.md, legacy_results.md
+notebooks_archive/          original course-project notebooks (reference only)
+Figures/ · paper/           figures and report from the original project
 ```
 
-## Extending the benchmark
+---
 
-**A new selector**: subclass `src.selection.BaseSelector`, implement
-`fit`/`select`/`get_config`, register it in `src/selection/registry.py`
-and add its hyper-parameters under `methods:` in `configs/experiments.yaml`.
-If it needs the LM, take an `LMScorer` (log-likelihoods) or the IDS-style
-callbacks (generation) in `__init__`; the registry wires them up.
+## Extending the Benchmark
 
-**A new task**: add a loader returning `(texts, labels)` and a `Task`
-entry (label names, instruction, input/output prefixes, split mapping) to
-`src/datasets/tasks.py`.
+| To add | Do this |
+|:--|:--|
+| **A selection method** | Subclass `src.selection.BaseSelector` and implement `fit`, `select` and `get_config`. Register it in `src/selection/registry.py` and add its hyper-parameters under `methods:` in `configs/experiments.yaml`. Selectors that need the language model take an `LMScorer` (log-likelihoods) or the IDS-style generation callbacks in `__init__`; the registry wires them up. |
+| **A task** | Add a loader returning `(texts, labels)` and a `Task` entry (label names, instruction, input/output prefixes, split mapping) in `src/datasets/tasks.py`. |
+| **A model** | Add an entry to `configs/models.yaml`; any `AutoModelForCausalLM` checkpoint works out of the box. Other backends subclass `BaseModel` and implement `_generate` (and `_score_choices` when log-probabilities are available). |
 
-**A new model**: add an entry to `configs/models.yaml`; any
-`AutoModelForCausalLM` checkpoint works out of the box. Other backends
-subclass `BaseModel` and implement `_generate` (and `_score_choices` if
-they expose log-probabilities).
+---
 
 ## Development
 
 ```bash
-pytest                          # ~80 tests, a few seconds, no network
+pytest                                  # ~80 tests, a few seconds, no network access
 ruff check src tests experiments
 black --check src tests experiments
-pre-commit install              # runs both on every commit
-python tests/verify_setup.py    # installation diagnostic
+pre-commit install                      # runs both checks on every commit
+python tests/verify_setup.py            # installation diagnostic
 ```
 
-CI (`.github/workflows/tests.yml`) runs lint, the test suite on Python 3.10
-and 3.11, and the smoke benchmark. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Continuous integration runs linting, the test suite on Python 3.10 and 3.11, and the smoke benchmark.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`CHANGELOG.md`](CHANGELOG.md) for
+release notes.
+
+---
 
 ## Citation
 
@@ -253,8 +256,12 @@ and 3.11, and the smoke benchmark. See [CONTRIBUTING.md](CONTRIBUTING.md).
 }
 ```
 
-A `CITATION.cff` is included for GitHub's "Cite this repository" button.
+A [`CITATION.cff`](CITATION.cff) file is included for GitHub's *Cite this repository* button.
+
+## Authors
+
+Kamisetty Yamini Preethi · Jonathan Tong · Satvik Praveen · Vinay Chandra Bandi — Texas A&M University
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
