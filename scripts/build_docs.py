@@ -19,6 +19,14 @@ REPO = Path(__file__).resolve().parents[1]
 DOCS = REPO / "docs"
 
 REWRITES = [
+    # Let MkDocs (md_in_html) parse the Markdown inside the README's centred header.
+    (r'<div align="center">', '<div align="center" markdown="1">'),
+    # On the site itself, point the header link at the source instead of back at the site.
+    (
+        r"\*\*Documentation:\*\* https://satvikpraveen\.github\.io/Optimal-Demo-Selection-ICL/",
+        "**Source code:** [github.com/SatvikPraveen/Optimal-Demo-Selection-ICL]"
+        "(https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL)",
+    ),
     (r"(src=\")results/plots/", r"\1plots/"),  # README images -> copied into the site
     (r"\]\(docs/", "]("),  # docs/methods.md -> methods.md
     (r"\]\(CONTRIBUTING\.md\)", "](contributing.md)"),
