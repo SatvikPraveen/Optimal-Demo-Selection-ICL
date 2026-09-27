@@ -11,6 +11,7 @@ from .baselines import BM25Selector, RandomSelector, TopKSelector
 from .ids import IDS
 from .influence import InfluenceSelection
 from .rdes import RDES
+from .registry import SELECTORS, available_selectors, build_selector
 from .se2 import Se2
 from .topk_cone import TopKCoNE
 
@@ -24,4 +25,7 @@ __all__ = [
     "RDES",
     "Se2",
     "InfluenceSelection",
+    "SELECTORS",
+    "available_selectors",
+    "build_selector",
 ]

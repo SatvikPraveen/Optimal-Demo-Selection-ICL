@@ -1,79 +1,86 @@
 # ============================================================================
-# Experiment Configuration
+# Experiment configuration for experiments/run_benchmark.py
+#
+# A run is one (dataset, model, method, seed[, k]) combination. `defaults`
+# apply to every benchmark; a benchmark block overrides them; command-line
+# flags override both. Method hyper-parameters live under `methods:` and can
+# be overridden per benchmark with `method_params: {method: {...}}`.
 # ============================================================================
 
-# Default experiment settings
 defaults:
-  seed: 42
-  num_runs: 1
-  k_shot: 5
-  batch_size: 10
-  max_tokens: 100
-  temperature: 0.0
+  seeds: [42]
+  k: 5
+  num_train: 1000        # demonstration pool size (sampled from train)
+  num_val: 200           # validation examples (only used by `influence`)
+  num_test: 200
+  prediction_mode: auto  # score (label log-probs) when the backend allows, else generate
+  embedding_model: all-MiniLM-L6-v2
+  scorer_model: gpt2     # LM used by topk_cone / se2 for scoring; "self" = the evaluated model
+  max_new_tokens: 10
+  output_dir: results/raw
 
-# Selection method configurations
-selection_methods:
+methods:
+  random: {}
+  topk: {}
+  bm25: {}
   topk_cone:
-    name: "TopK + CoNE"
-    k: 5
     retrieve_k: 30
-    scoring_model: "gpt2"
-
   ids:
-    name: "Iterative Demonstration Selection"
     k: 4
     q: 3
-    embedding_model: "all-MiniLM-L6-v2"
-
   rdes:
-    name: "RDES"
-    k: 5
-    # Add RDES specific parameters
-
+    alpha: 0.1
+    gamma: 0.9
+    epsilon: 0.2
+    relevance_weight: 0.5
   se2:
-    name: "Se²"
-    k: 5
+    k: 3
     retrieve_k: 20
     beam_size: 3
-
   influence:
-    name: "Influence Selection"
-    k: 5
-    # Add influence specific parameters
+    num_subsets: 100
+    coverage: 1
+    estimator: difference
 
-  random:
-    name: "Random Selection"
-    k: 5
-
-  bm25:
-    name: "BM25 Retrieval"
-    k: 5
-
-  sbert:
-    name: "SBERT Retrieval"
-    k: 5
-    embedding_model: "all-MiniLM-L6-v2"
-
-# Benchmark configurations
 benchmarks:
+  # Runs in seconds with no GPU, network or API key. Used by CI.
+  smoke:
+    datasets: [sst5]
+    models: [dummy]
+    methods: [random, topk, bm25, topk_cone, ids, rdes, se2, influence]
+    num_train: 40
+    num_val: 8
+    num_test: 12
+    seeds: [0]
+    scorer_model: self
+    method_params:
+      influence: {num_subsets: 12}
+      se2: {retrieve_k: 8, beam_size: 2}
+
+  # Small real run on a local GPT-2: sanity-check the pipeline end to end.
   quick_test:
-    datasets: ["sst5"]
-    models: ["gpt2-medium"]
-    methods: ["random", "sbert"]
-    num_test_samples: 100
-    num_train_samples: 500
+    datasets: [sst5]
+    models: [gpt2]
+    methods: [random, topk, bm25, topk_cone]
+    num_train: 500
+    num_test: 100
+    seeds: [0]
+    scorer_model: self
 
   full_benchmark:
-    datasets: ["sst5", "agnews", "commonsense_qa"]
-    models: ["gpt-4o-mini", "llama-3.2-3b", "gemma-2b"]
-    methods: ["topk_cone", "ids", "rdes", "se2", "random", "sbert"]
-    num_test_samples: 1000
-    num_train_samples: 5000
-    num_runs: 3
+    datasets: [sst5, agnews, csqa]
+    models: [gpt-4o-mini, llama-3.2-3b, gemma-2b]
+    methods: [random, topk, bm25, topk_cone, ids, rdes, se2, influence]
+    num_train: 2000
+    num_val: 200
+    num_test: 500
+    seeds: [0, 1, 2]
 
-  ablation_study:
-    dataset: "sst5"
-    model: "gpt-4o-mini"
-    methods: ["topk_cone", "ids"]
-    k_shots: [1, 3, 5, 7, 10]
-    num_test_samples: 500
+  ablation_k:
+    datasets: [sst5]
+    models: [llama-3.2-3b]
+    methods: [random, topk, topk_cone, se2]
+    k_values: [1, 3, 5, 8]
+    num_train: 2000
+    num_test: 300
+    seeds: [0, 1, 2]

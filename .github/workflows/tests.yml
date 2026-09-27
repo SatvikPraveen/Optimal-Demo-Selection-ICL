@@ -38,13 +38,23 @@ jobs:
       - name: Run installation verification
         run: python tests/verify_setup.py
 
-      # test_functionality.py / test_project.py are pytest-style (test_*
-      # functions with real asserts); pytest genuinely discovers and runs
-      # them. verify_setup.py above is a standalone diagnostic script (no
-      # test_* functions), so it's invoked directly rather than via pytest.
+      # verify_setup.py above is a standalone diagnostic script (no test_*
+      # functions), so it's invoked directly rather than via pytest.
       #
       # No OPENAI_API_KEY, network access to the HF Hub, or GPU is required:
       # tests/conftest.py mocks the sentence-transformers embedding model,
-      # the gpt2 CoNE backend, and the SST-5/AG News dataset downloads.
+      # the LM scorer, and the SST-5/AG News/CSQA dataset downloads.
       - name: Run test suite
-        run: pytest tests/test_functionality.py tests/test_project.py -v
+        run: pytest -v
+
+      # The smoke benchmark exercises the full runner (all 8 selection
+      # methods, aggregation) with the dummy model. It needs the SST-5
+      # dataset and the MiniLM embedding model from the HuggingFace Hub, so
+      # it is allowed to fail without failing the build when the Hub is
+      # unreachable; the same pipeline is covered offline by
+      # tests/test_benchmark.py.
+      - name: Smoke benchmark (dummy model)
+        continue-on-error: true
+        run: |
+          python experiments/run_benchmark.py --benchmark smoke --output-dir results/raw/ci
+          python experiments/aggregate_results.py --raw-dir results/raw/ci --output-dir results/processed/ci

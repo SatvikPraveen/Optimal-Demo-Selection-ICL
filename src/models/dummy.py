@@ -20,6 +20,41 @@ import numpy as np
 from .base import BaseModel
 
 
+class DummyScorer:
+    """
+    Deterministic stand-in for :class:`src.models.scoring.LMScorer`, so that
+    LM-scored selectors (TopK+CoNE, Se²) can run against ``DummyModel``.
+    The NLL is a stable hash of (context, continuation).
+    """
+
+    def __init__(self):
+        self.model = None
+        self.num_forward_passes = 0
+        self.num_scored_tokens = 0
+
+    def conditional_nll(self, contexts, continuations):
+        self.num_forward_passes += 1
+        out = []
+        for c, x in zip(contexts, continuations):
+            h = zlib.crc32((c + "\x00" + x).encode("utf-8")) & 0xFFFFFFFF
+            out.append(1.0 + (h % 1000) / 100.0)
+            self.num_scored_tokens += len(x.split())
+        return np.asarray(out, dtype=float)
+
+    def sequence_nll(self, texts):
+        return self.conditional_nll([""] * len(texts), texts)
+
+    def choice_logprobs(self, prompt, choices):
+        return -self.conditional_nll([prompt] * len(choices), list(choices))
+
+    def choice_logprobs_batch(self, prompts, choices):
+        return np.stack([self.choice_logprobs(p, choices) for p in prompts])
+
+    def reset_counters(self):
+        self.num_forward_passes = 0
+        self.num_scored_tokens = 0
+
+
 class DummyModel(BaseModel):
     supports_scoring = True
 
@@ -35,6 +70,7 @@ class DummyModel(BaseModel):
         self.label_names = list(label_names or [])
         self.output_prefix = output_prefix
         self.copy_majority_demo_label = copy_majority_demo_label
+        self.scorer = DummyScorer()
 
     # ------------------------------------------------------------------ #
     def _majority_demo_label(self, prompt: str) -> str | None:
