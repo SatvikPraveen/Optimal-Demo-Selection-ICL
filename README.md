@@ -184,15 +184,56 @@ a paired-bootstrap interval and an exact McNemar *p*-value pooled over seeds.
 
 ## Results
 
-No benchmark table has yet been generated with the current code. Producing one is a single command
-(`--benchmark full_benchmark` followed by `aggregate_results.py`), and this section will be populated from the
-resulting `summary.md` once the full grid has been run on the target models.
+Full grid: **3 tasks × 3 local models × 8 methods × 3 seeds = 216 runs**, *k* = 5 demonstrations, a 2 000-example
+demonstration pool and 500 test queries per run, label-likelihood prediction (no parse failures). Runs were executed on
+A100, A40 and A6000 GPUs.
 
-The accuracies obtained by the original notebook experiments (2024) are preserved in
-[`docs/legacy_results.md`](docs/legacy_results.md) alongside the figures in `Figures/`. They were produced by the
-archived notebooks with different prompts, data slices and, in places, flawed scoring, and are therefore not
-comparable to numbers produced by this benchmark. [`docs/methods.md`](docs/methods.md) lists what changed in each
-method and why.
+### Accuracy averaged over tasks
+
+| Method | Gemma-2B | LLaMA-3.2-3B | Qwen2.5-7B | Overall | Sig. better / worse than Random | Selection cost (s / query) |
+|:--|:--:|:--:|:--:|:--:|:--:|:--:|
+| Influence | 0.579 | 0.695 | 0.776 | **0.683** | 3 / 0 | 8.01 † |
+| TopK + ConE | 0.573 | 0.702 | 0.770 | **0.681** | 3 / 1 | 0.25 |
+| Se² | 0.568 | 0.708 | 0.757 | **0.678** | 3 / 1 | 2.13 |
+| Top-K (SBERT) | 0.566 | 0.691 | 0.756 | **0.671** | 1 / 1 | 0.01 |
+| IDS | 0.569 | 0.686 | 0.753 | **0.669** | 2 / 2 | 7.21 |
+| BM25 | 0.556 | 0.693 | 0.756 | **0.668** | 3 / 1 | 0.01 |
+| Random | 0.545 | 0.682 | 0.759 | **0.662** | — | 0.00 |
+| RDES | 0.517 | 0.664 | 0.750 | **0.644** | 0 / 4 | 0.01 |
+
+"Sig. better / worse" counts the nine (task, model) pairs where the paired-bootstrap 95 % interval of Δ accuracy
+excludes zero **and** the exact McNemar test gives *p* < 0.05, with per-example correctness pooled over the three
+seeds (1 500 paired examples per test). † Influence selects one fixed prompt, so its cost is the one-off fit
+(400 prompt subsets × 100 validation examples) amortised over the 500 test queries; IDS pays four model calls per query.
+
+Per-task tables with seed standard deviations are in
+[`results/processed/summary.md`](results/processed/summary.md), every paired test in
+[`results/processed/significance.csv`](results/processed/significance.csv), and figures in
+[`results/plots/`](results/plots/). The per-example predictions and selected demonstrations of all 216 runs are in
+[`results/raw.tar.gz`](results/raw.tar.gz) (`tar xzf results/raw.tar.gz -C results` restores `results/raw/`).
+
+### Findings
+
+1. **Selection matters, but modestly.** The best methods add about two points of average accuracy over random
+   demonstrations (0.683 vs 0.662). Gains shrink as the model gets stronger: the best method beats Random by
+   3.4 points on Gemma-2B, 2.6 on LLaMA-3.2-3B and 1.7 on Qwen2.5-7B.
+2. **The effect is strongly task-dependent.** Topic classification (AG News) benefits most, up to +12.5 points
+   for Se² on Gemma-2B. Sentiment (SST-5) gains are mostly within noise. On multiple-choice commonsense QA (CSQA),
+   similarity-based retrieval *hurts* the weakest model (five methods significantly below Random on Gemma-2B) and
+   is neutral on the others: similar-looking questions are not informative demonstrations for this task.
+3. **TopK + ConE is the best accuracy–cost trade-off.** It is within 0.2 points of the top method overall, never
+   far from the best on any model, and costs a quarter of a second per query.
+4. **Influence has the highest average and is never significantly worse than Random**, but it is expensive to fit
+   and its single fixed prompt makes it sensitive to the seed (for example ±0.078 on AG News with LLaMA-3.2-3B).
+5. **LM-in-the-loop selection does not pay for itself.** IDS spends about 7 s of generation per query and is not
+   better than plain Top-K retrieval; Se² helps on LLaMA-3.2-3B but is inconsistent elsewhere.
+6. **RDES underperforms Random** on every model (significantly in four of nine settings). Its Q-table is shared
+   across queries (see [`docs/methods.md`](docs/methods.md)), so the learned policy converges to diversity rather
+   than relevance.
+
+These results are for 5-shot prompts on small open models with label-likelihood prediction; the original
+notebook numbers in [`docs/legacy_results.md`](docs/legacy_results.md) used different protocols and are not
+comparable.
 
 ---
 

@@ -85,9 +85,7 @@ sentence_transformers/
 
 # Results & Outputs
 results/raw/*
-results/processed/*
 !results/raw/.gitkeep
-!results/processed/.gitkeep
 outputs/
 logs/
 *.log
