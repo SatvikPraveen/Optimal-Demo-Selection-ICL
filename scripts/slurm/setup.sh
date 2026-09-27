@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# One-time setup on the login node.
+# One-time setup on a Slurm cluster's login node.
 #
 #   bash scripts/slurm/setup.sh
 #
@@ -8,8 +8,9 @@
 # datasets, the embedding model and the local LM checkpoints into the shared
 # HuggingFace cache (compute nodes may not have internet access), and runs
 # the smoke benchmark. Gated checkpoints (LLaMA, Gemma) need HF_TOKEN or a
-# prior `huggingface-cli login`. on the cluster the login node cannot run NumPy 2
-# (its virtual CPU lacks x86-64-v2) and its driver needs a cu121 torch, so run:
+# prior `huggingface-cli login`. If the login node cannot run NumPy 2 (a CPU
+# without x86-64-v2) or the GPU driver predates the newest CUDA, run it on a
+# compute node with a driver-matched torch, e.g. for a CUDA 12.1 driver:
 #
 #   srun -p Quick --gres=gpu:1 --time=02:00:00 \
 #     env TORCH_CUDA=cu121 TORCH_VERSION=2.5.1 bash scripts/slurm/setup.sh
