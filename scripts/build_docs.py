@@ -31,7 +31,7 @@ REWRITES = [
         "](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/blob/main/CITATION.cff)",
     ),
     (
-        r"\]\((configs/[^)]+|scripts/[^)]+)\)",
+        r"\]\(((?:configs|scripts|results)/[^)]+)\)",
         r"](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/blob/main/\1)",
     ),
 ]
