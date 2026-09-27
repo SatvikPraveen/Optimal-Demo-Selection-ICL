@@ -1,199 +1,198 @@
 """
-RDES (RL-based Demonstration Selection)
+RDES - Reinforcement-learning-based Demonstration Selection.
 
-Ported from notebooks_archive/RDES/RDES_SST5.ipynb and RDES_AGNews.ipynb,
-where an identical `RDESelector` implementation appears independently in all
-three per-model cells (GPT2, Gemma, LLaMA) of both notebooks -- treated here
-as the canonical RDES algorithm since it's the consistent version.
-notebooks_archive/RDES/RDES_CSQA.ipynb instead contains two further, mutually
-inconsistent variants (a TF-IDF-state version with real LLM-call rewards and
-an explicit offline train() phase, and a separate, apparently unfinished
-Environment/RDESEvaluator version whose training loop calls the reward
-function with an empty demonstration list). Neither CSQA variant was ported;
-see the port's PR/task summary for the reasoning.
+Reference: Wang et al., "RDES: Balancing Relevance and Diversity in
+Demonstration Selection with Reinforcement Learning" (2024). This module is
+a port of the tabular Q-learning variant used consistently across the
+SST-5 / AG News notebooks in ``notebooks_archive/RDES/`` (the CommonsenseQA
+notebook contains two further, mutually inconsistent and unfinished
+variants that were not ported).
 
-RL formulation (as found in the SST5/AGNews notebooks):
-- Tabular Q-learning from scratch (a plain dict keyed by (state, action)).
-  No RL library (e.g. stable-baselines3, gym) is used or was ever a
-  dependency in these notebooks, so none was silently dropped from
-  requirements.txt during the March rewrite.
-- State: the sorted tuple of demo-pool indices already selected for the
-  current k-shot prompt. Notably, the query itself is NOT part of the state
-  key -- the Q-table only ever indexes by "which combination of pool indices
-  has been picked so far", not by which query prompted the reward. This
-  means the learned values are shared/conflated across all queries rather
-  than conditioned on the query; that's a property of the original
-  notebooks, not something this port tries to fix.
-- Action: choosing the next not-yet-selected demo-pool index.
-- Reward: 0.5 * (label diversity of selected demos, as entropy normalized by
-  log(num_classes)) + 0.5 * (mean embedding similarity of selected demos to
-  the query) -- balancing relevance and diversity, matching the README.
-- Training is ONLINE and per-call: each select_demonstrations() call both
-  acts epsilon-greedily on the current Q-table AND updates it with the
-  reward from the demos it just picked, for the whole test loop, in order.
-  There is no separate offline training phase in the SST5/AGNews notebooks
-  -- selection IS the training loop.
+RL formulation:
 
-Design decision (train-per-call vs. train-once-and-reuse):
-This port keeps the original's online per-call learning as the default,
-because (a) it's what the consensus original notebooks actually do, and
-(b) unlike the ids.py issue this repo already fixed, it isn't wasteful: the
-demo pool's embeddings are still computed exactly once, in __init__, the
-same way topk_cone.py caches its embeddings. The Q-table update itself is a
-handful of dict writes per call, not a recomputation of anything expensive.
-fit() below is an *additional*, opt-in convenience for callers who want an
-explicit offline warm-start phase; it is not required, and is not what the
-original notebooks did.
+* **State**: the sorted tuple of pool indices already chosen for the
+  current prompt. The query is *not* part of the state, so the Q-table is
+  shared across queries. That is a property of the original notebooks and
+  is kept here; it is documented rather than "fixed" so results remain
+  comparable.
+* **Action**: choosing the next not-yet-selected pool index.
+* **Reward**: ``0.5 * normalised label entropy of the selected demos +
+  0.5 * mean cosine similarity of the selected demos to the query``, i.e.
+  an explicit relevance/diversity trade-off.
+* **Learning is online**: every :meth:`select` call acts epsilon-greedily
+  on the current Q-table *and* updates it with the reward observed after
+  each pick. :meth:`fit_policy` offers an optional offline warm-start.
 
-Reproducibility: the original notebooks never call any seeding function, so
-determinism was never established even in the original code. This port uses
-the global numpy RNG (like the original), so it becomes reproducible once
-the caller uses this repo's src/utils/seed.set_seed() beforehand, consistent
-with how IDS and TopKCoNE rely on external seeding rather than seeding
-themselves.
+Reproducibility: the selector owns a ``numpy.random.Generator``. If
+``seed`` is ``None`` it is seeded from the global NumPy RNG, so calling
+``src.utils.set_seed`` beforehand still makes runs deterministic.
 """
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
+
+from ..utils.embeddings import DEFAULT_EMBEDDING_MODEL, Embedder
+from .base import BaseSelector
+
+QTable = dict[tuple[tuple[int, ...], int], float]
 
 
-class RDES:
+class RDES(BaseSelector):
     """
-    RL-based (tabular Q-learning) Demonstration Selection.
+    Tabular Q-learning demonstration selection.
 
-    Unlike the generic select_demonstrations(query, candidates) shape used
-    as a placeholder elsewhere, RDES binds its demonstration pool (and pool
-    labels, needed for the diversity reward) at construction time, the same
-    way TopKCoNE binds its embeddings/raw_texts -- this is required so the
-    pool's embeddings and the learned Q-table can be cached on the instance
-    and reused across calls.
+    Args:
+        k: demonstrations per query.
+        num_classes: number of label classes for entropy normalisation
+            (inferred from ``candidate_labels`` at ``fit`` time if omitted).
+        alpha: Q-learning step size.
+        gamma: discount factor.
+        epsilon: exploration rate of the epsilon-greedy policy.
+        relevance_weight: weight of the relevance term (diversity gets
+            ``1 - relevance_weight``). Default 0.5 as in the notebooks.
+        q_table: optional pre-existing Q-table to continue from.
+        seed: RNG seed (``None`` derives one from the global NumPy RNG).
+        embedder / embedding_model / device: sentence-embedding model.
     """
+
+    name = "rdes"
 
     def __init__(
         self,
-        candidates: Sequence[str],
-        candidate_labels: Sequence[int],
-        num_classes: int,
         k: int = 5,
-        embedding_model: str = "all-MiniLM-L6-v2",
+        num_classes: int | None = None,
         alpha: float = 0.1,
         gamma: float = 0.9,
         epsilon: float = 0.2,
-        q_table: dict[tuple[tuple[int, ...], int], float] | None = None,
+        relevance_weight: float = 0.5,
+        q_table: QTable | None = None,
+        seed: int | None = None,
+        embedder: Embedder | None = None,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         device: str | None = None,
     ):
-        """
-        Args:
-            candidates: Pool of candidate demonstration texts
-            candidate_labels: Integer class label for each candidate (used
-                only for the diversity term of the reward)
-            num_classes: Number of label classes (for entropy normalization)
-            k: Number of demonstrations to select per query
-            embedding_model: Sentence-transformers model for relevance
-            alpha: Q-learning step size
-            gamma: Q-learning discount factor
-            epsilon: Exploration rate for the epsilon-greedy policy
-            q_table: Optional pre-existing Q-table to continue training from
-                (e.g. one saved from a previous fit() or evaluation run)
-            device: Device for embeddings ('cuda', 'cpu', or None for auto)
-        """
-        if len(candidates) != len(candidate_labels):
-            raise ValueError("candidates and candidate_labels must be the same length")
-
-        self.candidates = list(candidates)
-        self.candidate_labels = list(candidate_labels)
+        super().__init__(k=k)
+        if not 0.0 <= relevance_weight <= 1.0:
+            raise ValueError("relevance_weight must be in [0, 1]")
         self.num_classes = num_classes
-        self.k = k
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
-        self.q_table: dict[tuple[tuple[int, ...], int], float] = (
-            q_table if q_table is not None else {}
-        )
+        self.relevance_weight = relevance_weight
+        self.q_table: QTable = q_table if q_table is not None else {}
+        self.seed = seed
+        self.reset_rng(seed)
+        self.embedder = embedder or Embedder(embedding_model, device=device)
+        self.embedding_model = self.embedder.model_name
+        self.candidate_embeddings: np.ndarray | None = None
+        self._label_ids: list[int] = []
 
-        self.embedding_model = SentenceTransformer(embedding_model, device=device)
-        self.candidate_embeddings = self.embedding_model.encode(
-            self.candidates, convert_to_numpy=True
-        )
+    def reset_rng(self, seed: int | None = None) -> None:
+        if seed is None:
+            seed = int(np.random.randint(0, 2**31 - 1))
+        self._rng = np.random.default_rng(seed)
 
-    def _diversity_score(self, selected_indices: list[int]) -> float:
-        """Entropy of the label distribution among selected demos."""
+    # ------------------------------------------------------------------ #
+    def fit(
+        self,
+        candidates: Sequence[str],
+        candidate_labels: Sequence[Any] | None = None,
+        candidate_embeddings: np.ndarray | None = None,
+    ) -> RDES:
+        if candidate_labels is None:
+            raise ValueError("RDES needs candidate_labels for its diversity reward")
+        super().fit(candidates, candidate_labels)
+        assert self.candidate_labels is not None
+        classes = sorted(set(self.candidate_labels), key=str)
+        class_to_id = {c: i for i, c in enumerate(classes)}
+        self._label_ids = [class_to_id[c] for c in self.candidate_labels]
+        if self.num_classes is None:
+            self.num_classes = len(classes)
+        elif self.num_classes < len(classes):
+            raise ValueError("num_classes is smaller than the number of distinct labels")
+
+        if candidate_embeddings is not None:
+            if len(candidate_embeddings) != len(self.candidates):
+                raise ValueError("candidate_embeddings must have one row per candidate")
+            self.candidate_embeddings = np.asarray(candidate_embeddings, dtype=np.float32)
+        else:
+            self.candidate_embeddings = self.embedder.encode(self.candidates)
+        return self
+
+    # ------------------------------------------------------------------ #
+    def _diversity(self, selected: Sequence[int]) -> float:
+        assert self.num_classes is not None
         counts = np.zeros(self.num_classes)
-        for idx in selected_indices:
-            counts[self.candidate_labels[idx]] += 1
+        for i in selected:
+            counts[self._label_ids[i]] += 1
         probs = counts / counts.sum()
-        return float(-np.sum(probs * np.log(probs + 1e-9)))
+        entropy = float(-np.sum(probs * np.log(probs + 1e-9)))
+        max_entropy = np.log(self.num_classes)
+        return entropy / max_entropy if max_entropy > 0 else 0.0
 
-    def _state_key(self, selected: list[int]) -> tuple[int, ...]:
+    def _relevance(self, query_embedding: np.ndarray, selected: Sequence[int]) -> float:
+        assert self.candidate_embeddings is not None
+        return float(np.mean(self.candidate_embeddings[list(selected)] @ query_embedding))
+
+    def reward(self, query_embedding: np.ndarray, selected: Sequence[int]) -> float:
+        w = self.relevance_weight
+        return (1 - w) * self._diversity(selected) + w * self._relevance(query_embedding, selected)
+
+    @staticmethod
+    def _state(selected: Sequence[int]) -> tuple[int, ...]:
         return tuple(sorted(selected))
 
-    def _reward(self, query_embedding: np.ndarray, selected_indices: list[int]) -> float:
-        demo_embeddings = self.candidate_embeddings[selected_indices]
-        relevance = float(np.mean(np.dot(demo_embeddings, query_embedding)))
-
-        diversity = self._diversity_score(selected_indices)
-        max_entropy = np.log(self.num_classes)
-        normalized_diversity = diversity / max_entropy if max_entropy > 0 else 0.0
-
-        return 0.5 * normalized_diversity + 0.5 * relevance
-
-    def select_demonstrations(self, query: str) -> list[int]:
-        """
-        Select k demonstration indices for `query`.
-
-        Acts epsilon-greedily on the current Q-table to pick each of the k
-        demos in turn, and updates the Q-table online with the resulting
-        reward after each pick -- matching the original notebooks, where
-        selection and training are the same operation, repeated once per
-        query across a test loop.
-
-        Returns:
-            Indices into `candidates` of the selected demonstrations, in
-            selection order.
-        """
+    def select(self, query: str) -> list[int]:
+        self._check_fitted()
+        n = len(self.candidates)
+        query_embedding = self.embedder.encode(query)
         selected: list[int] = []
-        query_embedding = self.embedding_model.encode(query, convert_to_numpy=True)
 
-        for _ in range(self.k):
-            valid = [i for i in range(len(self.candidates)) if i not in selected]
+        for _ in range(min(self.k, n)):
+            valid = [i for i in range(n) if i not in selected]
+            state = self._state(selected)
 
-            if np.random.random() < self.epsilon:
-                action = int(np.random.choice(valid))
+            if self._rng.random() < self.epsilon:
+                action = int(self._rng.choice(valid))
             else:
-                current_key = self._state_key(selected)
-                q_values = [self.q_table.get((current_key, a), 0.0) for a in valid]
+                q_values = np.array([self.q_table.get((state, a), 0.0) for a in valid])
                 action = int(valid[int(np.argmax(q_values))])
 
-            current_state_key = self._state_key(selected)
             selected.append(action)
+            r = self.reward(query_embedding, selected)
 
-            reward = self._reward(query_embedding, selected)
-
-            next_state_key = self._state_key(selected)
+            next_state = self._state(selected)
             remaining = [a for a in valid if a != action]
-            next_max = max(
-                (self.q_table.get((next_state_key, a), 0.0) for a in remaining),
-                default=0.0,
+            next_max = max((self.q_table.get((next_state, a), 0.0) for a in remaining), default=0.0)
+            old = self.q_table.get((state, action), 0.0)
+            self.q_table[(state, action)] = (1 - self.alpha) * old + self.alpha * (
+                r + self.gamma * next_max
             )
-
-            old_value = self.q_table.get((current_state_key, action), 0.0)
-            self.q_table[(current_state_key, action)] = (
-                1 - self.alpha
-            ) * old_value + self.alpha * (reward + self.gamma * next_max)
-
         return selected
 
-    def fit(self, queries: Sequence[str], num_epochs: int = 1) -> None:
-        """
-        Optional convenience: warm-start the Q-table offline by running
-        select_demonstrations() over `queries`, `num_epochs` times, before
-        real evaluation. This is NOT part of the original notebooks (which
-        trained online, one query at a time, during evaluation itself) --
-        it's provided for callers who want an explicit pretraining step
-        instead of (or in addition to) online learning during evaluation.
-        """
+    def select_demonstrations(self, query: str) -> list[int]:
+        """Backwards-compatible alias for :meth:`select`."""
+        return self.select(query)
+
+    def fit_policy(self, queries: Sequence[str], num_epochs: int = 1) -> RDES:
+        """Optional offline warm-start: run the online learner over ``queries``."""
         for _ in range(num_epochs):
-            for query in queries:
-                self.select_demonstrations(query)
+            for q in queries:
+                self.select(q)
+        return self
+
+    def get_config(self) -> dict[str, Any]:
+        return {
+            **super().get_config(),
+            "num_classes": self.num_classes,
+            "alpha": self.alpha,
+            "gamma": self.gamma,
+            "epsilon": self.epsilon,
+            "relevance_weight": self.relevance_weight,
+            "seed": self.seed,
+            "embedding_model": self.embedding_model,
+        }

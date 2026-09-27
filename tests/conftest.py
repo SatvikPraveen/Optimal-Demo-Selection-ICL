@@ -46,12 +46,8 @@ class _FakeSentenceTransformer:
 @pytest.fixture
 def mock_sentence_transformer(monkeypatch):
     """Avoid downloading the real all-MiniLM-L6-v2 weights during CI."""
-    import src.selection.ids as ids_module
-    import src.selection.rdes as rdes_module
     import src.utils.embeddings as emb_module
 
-    monkeypatch.setattr(ids_module, "SentenceTransformer", _FakeSentenceTransformer)
-    monkeypatch.setattr(rdes_module, "SentenceTransformer", _FakeSentenceTransformer)
     monkeypatch.setattr(emb_module, "SentenceTransformer", _FakeSentenceTransformer)
     monkeypatch.setattr("sentence_transformers.SentenceTransformer", _FakeSentenceTransformer)
     # The shared Embedder caches model instances by name; make sure a real
@@ -61,52 +57,51 @@ def mock_sentence_transformer(monkeypatch):
     emb_module.Embedder.clear_shared_models()
 
 
-class _FakeBatchEncoding(dict):
-    def to(self, device):
-        return self
+class FakeScorer:
+    """
+    Deterministic stand-in for src.models.scoring.LMScorer: the NLL of a
+    continuation given a context is a fixed function of the two strings,
+    so selectors that rank by it can be tested without model weights.
+    """
 
+    def __init__(self, *args, **kwargs):
+        self.num_forward_passes = 0
+        self.num_scored_tokens = 0
+        self.model = None
 
-class _FakeGPT2Tokenizer:
-    @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        return cls()
+    def conditional_nll(self, contexts, continuations):
+        import zlib
 
-    def __call__(self, text, return_tensors="pt"):
-        import torch
+        self.num_forward_passes += 1
+        out = []
+        for c, x in zip(contexts, continuations):
+            h = zlib.crc32((c + "\x00" + x).encode("utf-8")) & 0xFFFFFFFF
+            out.append(1.0 + (h % 1000) / 100.0)
+        return np.array(out)
 
-        n_tokens = max(1, len(text.split()))
-        return _FakeBatchEncoding(input_ids=torch.randint(0, 1000, (1, n_tokens)))
+    def sequence_nll(self, texts):
+        return self.conditional_nll([""] * len(texts), texts)
 
+    def choice_logprobs(self, prompt, choices):
+        return -self.conditional_nll([prompt] * len(choices), list(choices))
 
-class _FakeGPT2Output:
-    def __init__(self, loss):
-        self.loss = loss
+    def choice_logprobs_batch(self, prompts, choices):
+        return np.stack([self.choice_logprobs(p, choices) for p in prompts])
 
-
-class _FakeGPT2Model:
-    @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        return cls()
-
-    def to(self, device):
-        return self
-
-    def eval(self):
-        return self
-
-    def __call__(self, input_ids, labels=None):
-        import torch
-
-        return _FakeGPT2Output(torch.tensor(0.5))
+    def reset_counters(self):
+        self.num_forward_passes = 0
+        self.num_scored_tokens = 0
 
 
 @pytest.fixture
 def mock_gpt2_cone_backend(monkeypatch):
-    """Avoid downloading the real gpt2 weights used by TopKCoNE's CoNE scoring."""
-    import src.selection.topk_cone as topk_module
+    """Avoid downloading gpt2 weights: LMScorer.from_pretrained -> FakeScorer."""
+    from src.models import scoring
 
-    monkeypatch.setattr(topk_module, "GPT2TokenizerFast", _FakeGPT2Tokenizer)
-    monkeypatch.setattr(topk_module, "GPT2LMHeadModel", _FakeGPT2Model)
+    monkeypatch.setattr(
+        scoring.LMScorer, "from_pretrained", classmethod(lambda cls, *a, **k: FakeScorer())
+    )
+    return FakeScorer
 
 
 @pytest.fixture

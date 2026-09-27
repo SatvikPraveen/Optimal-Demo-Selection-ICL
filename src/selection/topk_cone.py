@@ -1,99 +1,153 @@
 """
-TopK + CoNE (Conditional Negative Log-Likelihood Evaluation)
+TopK + CoNE: embedding retrieval refined by conditional entropy.
 
-Reference: Combining retrieval with cross-entropy based refinement
+Reference: Peng et al., "Revisiting Demonstration Selection Strategies in
+In-Context Learning" (ACL 2024), which proposes TopK + ConE: re-rank
+similarity-retrieved candidates by the conditional entropy of the query
+given each candidate. The pipeline:
+
+1. retrieve ``retrieve_k`` candidates by sentence-embedding similarity;
+2. score each candidate ``d`` by ``H(query | d) = -log p_LM(query | d)``,
+   the conditional entropy of the query given that demonstration under a
+   small causal LM;
+3. keep the ``k`` candidates with the lowest conditional entropy.
+
+The archived notebook computed ``H(query | d)`` as ``CE(d + query) -
+CE(d)`` with two separate forward passes and the batch-mean-loss caveat
+described in :mod:`src.models.scoring`; :class:`LMScorer.conditional_nll`
+yields the same quantity exactly, in one masked pass.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any
+
 import numpy as np
-import torch
-from sklearn.metrics.pairwise import cosine_similarity
-from transformers import GPT2LMHeadModel, GPT2TokenizerFast
+
+from ..models.scoring import LMScorer
+from ..utils.embeddings import DEFAULT_EMBEDDING_MODEL, Embedder, cosine_top_k
+from .base import BaseSelector
 
 
-class TopKCoNE:
+class TopKCoNE(BaseSelector):
     """
-    TopK + CoNE demonstration selection
+    Top-K retrieval + CoNE re-ranking.
 
-    Combines embedding-based retrieval with cross-entropy refinement.
+    Args:
+        k: final number of demonstrations.
+        retrieve_k: candidates retrieved before re-ranking.
+        scorer: :class:`LMScorer` for the CoNE stage. If omitted, one is
+            created lazily from ``scorer_model`` on first use.
+        scorer_model: HF checkpoint for the lazily created scorer.
+        embedder / embedding_model / device: sentence-embedding model.
+        separator: placed between the demonstration and the query.
+        query_prefix: prepended to the query before scoring (template).
+
+    Backwards compatibility: ``TopKCoNE(embeddings=..., raw_texts=...)``
+    still works and calls :meth:`fit` immediately.
     """
+
+    name = "topk_cone"
 
     def __init__(
         self,
-        embeddings: np.ndarray,
-        raw_texts: list[str],
         k: int = 5,
         retrieve_k: int = 30,
-        model_name: str = "gpt2",
+        scorer: LMScorer | None = None,
+        scorer_model: str = "gpt2",
+        embedder: Embedder | None = None,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         device: str | None = None,
+        separator: str = "\n",
+        query_prefix: str = "",
+        embeddings: np.ndarray | None = None,
+        raw_texts: Sequence[str] | None = None,
+        model_name: str | None = None,
     ):
-        """
-        Initialize TopK+CoNE selector.
-
-        Args:
-            embeddings: Pre-computed embeddings for training samples
-            raw_texts: Raw text of training samples
-            k: Final number of demonstrations to select
-            retrieve_k: Number of candidates to retrieve before CoNE
-            model_name: Language model for CoNE scoring
-            device: Device ('cuda', 'cpu', or None for auto)
-        """
-        self.embeddings = embeddings
-        self.raw_texts = raw_texts
-        self.k = k
+        super().__init__(k=k)
+        if retrieve_k < 1:
+            raise ValueError("retrieve_k must be >= 1")
         self.retrieve_k = retrieve_k
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.scorer = scorer
+        self.scorer_model = model_name or scorer_model
+        self.device = device
+        self.embedder = embedder or Embedder(embedding_model, device=device)
+        self.embedding_model = self.embedder.model_name
+        self.separator = separator
+        self.query_prefix = query_prefix
+        self.candidate_embeddings: np.ndarray | None = None
+        self.last_scores: dict[int, float] = {}
 
-        self.tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
-        self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
+        if raw_texts is not None:
+            self.fit(raw_texts, candidate_embeddings=embeddings)
 
+    # ------------------------------------------------------------------ #
+    def _get_scorer(self) -> LMScorer:
+        if self.scorer is None:
+            self.scorer = LMScorer.from_pretrained(self.scorer_model, device=self.device)
+        return self.scorer
+
+    def fit(
+        self,
+        candidates: Sequence[str],
+        candidate_labels: Sequence[Any] | None = None,
+        candidate_embeddings: np.ndarray | None = None,
+        scorer: LMScorer | None = None,
+    ) -> TopKCoNE:
+        super().fit(candidates, candidate_labels)
+        if scorer is not None:
+            self.scorer = scorer
+        if candidate_embeddings is not None:
+            if len(candidate_embeddings) != len(self.candidates):
+                raise ValueError("candidate_embeddings must have one row per candidate")
+            self.candidate_embeddings = np.asarray(candidate_embeddings, dtype=np.float32)
+        else:
+            self.candidate_embeddings = self.embedder.encode(self.candidates)
+        return self
+
+    # Legacy attribute names.
+    @property
+    def embeddings(self) -> np.ndarray | None:
+        return self.candidate_embeddings
+
+    @property
+    def raw_texts(self) -> list[str]:
+        return self.candidates
+
+    # ------------------------------------------------------------------ #
     def get_topk(self, query_embedding: np.ndarray) -> np.ndarray:
-        """Retrieve top-k similar examples by embedding"""
-        similarities = cosine_similarity(query_embedding.reshape(1, -1), self.embeddings)[0]
-        topk_indices = np.argsort(similarities)[-self.retrieve_k :][::-1]
-        return topk_indices
+        self._check_fitted()
+        assert self.candidate_embeddings is not None
+        return cosine_top_k(query_embedding, self.candidate_embeddings, self.retrieve_k)
 
-    def compute_cross_entropy(self, text: str) -> float:
-        """Compute cross-entropy for text"""
-        encodings = self.tokenizer(text, return_tensors="pt").to(self.device)
-        input_ids = encodings["input_ids"]
+    def apply_cone(self, query_text: str, topk_indices: Sequence[int]) -> list[int]:
+        """Re-rank ``topk_indices`` by conditional entropy of the query."""
+        idx = [int(i) for i in topk_indices]
+        if not idx:
+            return []
+        scorer = self._get_scorer()
+        contexts = [self.candidates[i] + self.separator for i in idx]
+        target = self.query_prefix + query_text
+        nll = scorer.conditional_nll(contexts, [target] * len(contexts))
+        self.last_scores = {i: float(n) for i, n in zip(idx, nll)}
+        order = sorted(range(len(idx)), key=lambda j: (nll[j], idx[j]))
+        return [idx[j] for j in order[: self.k]]
 
-        with torch.no_grad():
-            outputs = self.model(input_ids, labels=input_ids)
-
-        loss = outputs.loss.item()
-        return loss * input_ids.size(1)
-
-    def apply_cone(self, query_text: str, topk_indices: np.ndarray) -> list[int]:
-        """Apply CoNE to refine candidates"""
-        candidate_scores = []
-
-        for idx in topk_indices:
-            demo = self.raw_texts[idx]
-            prompt_with_query = demo + "\n" + query_text
-
-            # Conditional cross-entropy
-            H_xc = self.compute_cross_entropy(prompt_with_query)
-            H_c = self.compute_cross_entropy(demo)
-            H_cond = H_xc - H_c
-
-            candidate_scores.append((idx, H_cond))
-
-        # Select k demonstrations with lowest conditional entropy
-        sorted_indices = [idx for idx, _ in sorted(candidate_scores, key=lambda x: x[1])]
-        return sorted_indices[: self.k]
+    def select(self, query: str) -> list[int]:
+        q_emb = self.embedder.encode(query)
+        return self.apply_cone(query, self.get_topk(q_emb))
 
     def select_demonstrations(self, query_embedding: np.ndarray, query_text: str) -> list[int]:
-        """
-        Select demonstrations using TopK + CoNE.
+        """Backwards-compatible API taking a precomputed query embedding."""
+        return self.apply_cone(query_text, self.get_topk(query_embedding))
 
-        Args:
-            query_embedding: Embedding of the query
-            query_text: Raw text of the query
-
-        Returns:
-            Indices of selected demonstrations
-        """
-        topk_indices = self.get_topk(query_embedding)
-        refined_indices = self.apply_cone(query_text, topk_indices)
-        return refined_indices
+    def get_config(self) -> dict[str, Any]:
+        return {
+            **super().get_config(),
+            "retrieve_k": self.retrieve_k,
+            "embedding_model": self.embedding_model,
+            "scorer_model": self.scorer_model,
+            "separator": self.separator,
+            "query_prefix": self.query_prefix,
+        }

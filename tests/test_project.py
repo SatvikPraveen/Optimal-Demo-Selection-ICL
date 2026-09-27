@@ -5,9 +5,8 @@ and evaluation together.
 No live API keys, network access, or GPU are required: the mock_hf_datasets
 fixture stands in for the real SST-5 / AG News downloads, and
 mock_sentence_transformer stands in for the real embedding model download
-(see conftest.py). The original version of this test used a real
-sentence-transformers encoder directly; here we get embeddings via
-IDS.encode_text() instead, so there is a single mocked embedding boundary.
+(see conftest.py). Embeddings come from the shared src.utils.Embedder, so
+there is a single mocked embedding boundary.
 """
 
 import numpy as np
@@ -44,11 +43,14 @@ def test_selection_algorithms_and_embeddings(
     assert ids_selector.q == 3
 
     sample_texts = texts_sst[:30]
-    embeddings = np.array([ids_selector.encode_text(t) for t in sample_texts])
-    topk_selector = TopKCoNE(embeddings, sample_texts, k=3, retrieve_k=10)
+    embeddings = ids_selector.embedder.encode(sample_texts)
+    topk_selector = TopKCoNE(k=3, retrieve_k=10).fit(sample_texts, candidate_embeddings=embeddings)
 
     assert topk_selector.k == 3
     assert embeddings.shape == (30, 384)
+    assert topk_selector.candidate_embeddings is embeddings or np.allclose(
+        topk_selector.candidate_embeddings, embeddings
+    )
 
 
 def test_prompt_building():
@@ -78,7 +80,7 @@ def test_similarity_based_retrieval(mock_sentence_transformer, mock_hf_datasets)
     texts_sst, _ = load_sst5("test", 50, seed=42)
 
     ids_selector = IDS(k=5, q=3)
-    embeddings = np.array([ids_selector.encode_text(t) for t in texts_sst[:30]])
+    embeddings = ids_selector.embedder.encode(texts_sst[:30])
 
     test_embedding = embeddings[0].reshape(1, -1)
     similarities = np.dot(embeddings, test_embedding.T).flatten()

@@ -1,112 +1,153 @@
 """
-Iterative Demonstration Selection (IDS)
+Iterative Demonstration Selection (IDS).
 
-Reference: Based on the IDS algorithm for demonstration selection
+Reference: Qin et al., "In-Context Learning with Iterative Demonstration
+Selection" (2023). IDS asks the model for a zero-shot chain-of-thought
+(CoT) rationale for the query, retrieves the ``k`` training examples most
+similar to *that rationale* (rather than to the raw query), runs ICL with
+them, and repeats ``q`` times using the newly generated rationale. The
+paper takes a majority vote over the ``q`` ICL answers; the per-iteration
+answers are exposed through :attr:`last_answers` so the runner can do so.
+
+The selector needs two model callbacks:
+
+* ``zero_shot_cot_fn(query) -> str``: a rationale for the query.
+* ``icl_fn(query, demonstrations) -> str``: the model's ICL response given
+  the demonstration *texts*; its rationale drives the next iteration.
+
+They can be given at construction time or bound later with :meth:`bind`.
 """
 
-from collections.abc import Callable
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from typing import Any
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+
+from ..utils.embeddings import DEFAULT_EMBEDDING_MODEL, Embedder, cosine_top_k
+from .base import BaseSelector
 
 
-class IDS:
+def default_reasoning_extractor(response: str) -> str:
     """
-    Iterative Demonstration Selection
-
-    Selects demonstrations by iteratively refining based on reasoning paths.
+    Keep the reasoning part of an ICL answer: everything before the final
+    "Therefore" (the paper's convention); the whole response otherwise.
     """
+    marker = "Therefore"
+    idx = response.find(marker)
+    return response[:idx].strip() if idx > 0 else response.strip()
+
+
+class IDS(BaseSelector):
+    """
+    Iterative Demonstration Selection.
+
+    Args:
+        k: demonstrations per prompt.
+        q: number of selection/ICL iterations.
+        zero_shot_cot_fn, icl_fn: model callbacks (see module docstring).
+        reasoning_extractor: maps an ICL response to the text embedded for the
+            next retrieval round.
+        embedder / embedding_model / device: sentence-embedding model.
+    """
+
+    name = "ids"
 
     def __init__(
         self,
-        embedding_model: str = "all-MiniLM-L6-v2",
         k: int = 4,
         q: int = 3,
+        zero_shot_cot_fn: Callable[[str], str] | None = None,
+        icl_fn: Callable[[str, list[str]], str] | None = None,
+        reasoning_extractor: Callable[[str], str] = default_reasoning_extractor,
+        embedder: Embedder | None = None,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         device: str | None = None,
     ):
-        """
-        Initialize IDS selector.
-
-        Args:
-            embedding_model: Name of sentence transformer model
-            k: Number of demonstrations to select
-            q: Number of iterations
-            device: Device for embeddings ('cuda', 'cpu', or None for auto)
-        """
-        self.k = k
+        super().__init__(k=k)
+        if q < 1:
+            raise ValueError("q must be >= 1")
         self.q = q
-        self.model = SentenceTransformer(embedding_model, device=device)
-        self._cached_train_samples: list[str] | None = None
-        self._cached_train_embeddings: np.ndarray | None = None
+        self.zero_shot_cot_fn = zero_shot_cot_fn
+        self.icl_fn = icl_fn
+        self.reasoning_extractor = reasoning_extractor
+        self.embedder = embedder or Embedder(embedding_model, device=device)
+        self.embedding_model = self.embedder.model_name
+        self.candidate_embeddings: np.ndarray | None = None
+        self.last_answers: list[str] = []
+        self.last_selections: list[list[int]] = []
 
-    def encode_text(self, text: str) -> np.ndarray:
-        """Encode text using SentenceBERT"""
-        return self.model.encode(text)
+    # ------------------------------------------------------------------ #
+    def bind(
+        self,
+        zero_shot_cot_fn: Callable[[str], str],
+        icl_fn: Callable[[str, list[str]], str],
+    ) -> IDS:
+        self.zero_shot_cot_fn = zero_shot_cot_fn
+        self.icl_fn = icl_fn
+        return self
 
-    def precompute_train_embeddings(self, train_samples: list[str]) -> np.ndarray:
-        """
-        Compute and cache embeddings for a training pool once, so repeated
-        calls to select_demonstrations() over the same pool (e.g. once per
-        test example) don't re-embed it every time.
-        """
-        self._cached_train_embeddings = np.array(
-            [self.encode_text(sample) for sample in train_samples]
-        )
-        self._cached_train_samples = train_samples
-        return self._cached_train_embeddings
+    def fit(
+        self,
+        candidates: Sequence[str],
+        candidate_labels: Sequence[Any] | None = None,
+        candidate_embeddings: np.ndarray | None = None,
+    ) -> IDS:
+        super().fit(candidates, candidate_labels)
+        if candidate_embeddings is not None:
+            if len(candidate_embeddings) != len(self.candidates):
+                raise ValueError("candidate_embeddings must have one row per candidate")
+            self.candidate_embeddings = np.asarray(candidate_embeddings, dtype=np.float32)
+        else:
+            self.candidate_embeddings = self.embedder.encode(self.candidates)
+        return self
+
+    # Backwards-compatible alias used by the first version of this module.
+    def precompute_train_embeddings(self, train_samples: Sequence[str]) -> np.ndarray:
+        self.fit(train_samples)
+        assert self.candidate_embeddings is not None
+        return self.candidate_embeddings
 
     def select_top_k(
         self, query_embedding: np.ndarray, candidate_embeddings: np.ndarray, k: int
     ) -> np.ndarray:
-        """Select top-k most similar examples"""
-        similarities = cosine_similarity([query_embedding], candidate_embeddings)[0]
-        top_k_indices = np.argsort(similarities)[-k:][::-1]
-        return top_k_indices
+        return cosine_top_k(query_embedding, candidate_embeddings, k)
+
+    # ------------------------------------------------------------------ #
+    def select(self, query: str) -> list[int]:
+        self._check_fitted()
+        if self.zero_shot_cot_fn is None or self.icl_fn is None:
+            raise RuntimeError("IDS needs zero_shot_cot_fn and icl_fn: pass them or call bind()")
+        assert self.candidate_embeddings is not None
+
+        self.last_answers = []
+        self.last_selections = []
+        reasoning = self.zero_shot_cot_fn(query)
+        selected: list[int] = []
+        for _ in range(self.q):
+            q_emb = self.embedder.encode(reasoning)
+            selected = cosine_top_k(q_emb, self.candidate_embeddings, self.k).tolist()
+            demos = [self.candidates[i] for i in selected]
+            answer = self.icl_fn(query, demos)
+            self.last_answers.append(answer)
+            self.last_selections.append(selected)
+            reasoning = self.reasoning_extractor(answer) or answer
+        return selected
 
     def select_demonstrations(
         self,
         test_sample: str,
-        train_samples: list[str],
+        train_samples: Sequence[str],
         zero_shot_cot_fn: Callable[[str], str],
         icl_fn: Callable[[str, list[str]], str],
         precomputed_train_embeddings: np.ndarray | None = None,
     ) -> list[int]:
-        """
-        Select demonstrations for a test sample using IDS.
+        """Backwards-compatible one-shot API (fits the pool if needed)."""
+        if not self._fitted or list(train_samples) != self.candidates:
+            self.fit(train_samples, candidate_embeddings=precomputed_train_embeddings)
+        self.bind(zero_shot_cot_fn, icl_fn)
+        return self.select(test_sample)
 
-        Args:
-            test_sample: The test sample to select demonstrations for
-            train_samples: Pool of training examples
-            zero_shot_cot_fn: Function for zero-shot chain-of-thought
-            icl_fn: Function for in-context learning
-            precomputed_train_embeddings: Optional embeddings for train_samples
-                from precompute_train_embeddings(), to avoid re-encoding the
-                same pool on every call (e.g. once per test example in a loop)
-
-        Returns:
-            Indices of selected demonstrations
-        """
-        if precomputed_train_embeddings is not None:
-            train_embeddings = precomputed_train_embeddings
-        elif (
-            self._cached_train_samples is train_samples
-            and self._cached_train_embeddings is not None
-        ):
-            train_embeddings = self._cached_train_embeddings
-        else:
-            train_embeddings = self.precompute_train_embeddings(train_samples)
-
-        # Initial reasoning path
-        reasoning_path = zero_shot_cot_fn(test_sample)
-
-        # Iteratively refine selection
-        for _ in range(self.q):
-            query_embedding = self.encode_text(reasoning_path)
-            selected_indices = self.select_top_k(query_embedding, train_embeddings, self.k)
-            demonstrations = [train_samples[i] for i in selected_indices]
-
-            # Get new reasoning path
-            reasoning_path = icl_fn(test_sample, demonstrations)
-
-        return selected_indices.tolist()
+    def get_config(self) -> dict[str, Any]:
+        return {**super().get_config(), "q": self.q, "embedding_model": self.embedding_model}
