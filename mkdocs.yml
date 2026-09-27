@@ -1,0 +1,63 @@
+site_name: Optimal Demonstration Selection for ICL
+site_description: A reproducible benchmark of demonstration-selection methods for few-shot in-context learning.
+site_url: https://satvikpraveen.github.io/Optimal-Demo-Selection-ICL/
+repo_url: https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL
+repo_name: SatvikPraveen/Optimal-Demo-Selection-ICL
+edit_uri: edit/main/docs/
+copyright: MIT License · Texas A&amp;M University
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Overview: index.md
+  - Methods: methods.md
+  - Legacy results: legacy_results.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search

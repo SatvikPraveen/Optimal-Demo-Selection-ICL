@@ -9,6 +9,7 @@
 [![License: MIT](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linted with ruff](https://img.shields.io/badge/linted%20with-ruff-261230.svg)](https://github.com/astral-sh/ruff)
+[![Docs](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/actions/workflows/docs.yml/badge.svg)](https://satvikpraveen.github.io/Optimal-Demo-Selection-ICL/)
 
 [Overview](#overview) ·
 [Installation](#installation) ·
@@ -18,6 +19,8 @@
 [Results](#results) ·
 [Extending](#extending-the-benchmark) ·
 [Citation](#citation)
+
+**Documentation:** https://satvikpraveen.github.io/Optimal-Demo-Selection-ICL/
 
 </div>
 
@@ -251,7 +254,9 @@ pre-commit install                      # runs both checks on every commit
 python tests/verify_setup.py            # installation diagnostic
 ```
 
-Continuous integration runs linting, the test suite on Python 3.10 and 3.11, and the smoke benchmark.
+Continuous integration runs linting, the test suite on Python 3.10 and 3.11, and the smoke benchmark. The
+documentation site is built with MkDocs from the README and `docs/` on every push to `main`
+(`pip install -e ".[docs]" && python scripts/build_docs.py && mkdocs serve` to preview locally).
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`CHANGELOG.md`](CHANGELOG.md) for
 release notes.
 
