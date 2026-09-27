@@ -275,3 +275,6 @@ docs/contributing.md
 docs/changelog.md
 docs/Figures/
 docs/plots/
+
+# Local Claude Code settings
+.claude/
