@@ -32,9 +32,13 @@ from src.evaluation import compare_methods, summarize_seeds
 def load_runs(raw_dir: Path) -> list[dict]:
     runs = []
     for path in sorted(raw_dir.rglob("*.json")):
-        with open(path) as f:
-            r = json.load(f)
-        if "metrics" in r and "config" in r:
+        try:
+            with open(path) as f:
+                r = json.load(f)
+        except (OSError, ValueError):
+            print(f"skipping unreadable result file: {path}")
+            continue
+        if isinstance(r, dict) and "metrics" in r and "config" in r:
             r["_path"] = str(path)
             runs.append(r)
     return runs

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
@@ -343,10 +344,46 @@ def _mean_label_entropy(records: list[dict], task: Task) -> float | None:
     return float(np.mean(ents))
 
 
-def save_result(result: dict, path: Path) -> None:
+def save_result(result: dict, path: Path, retries: int = 12, base_delay: float = 5.0) -> None:
+    """
+    Write ``result`` atomically: serialise to a temporary file in the same
+    directory, fsync, then rename over ``path``, so a reader never sees a
+    partial file. Transient filesystem errors (e.g. a shared quota being hit
+    momentarily by another job) are retried with exponential backoff, up to
+    roughly 20 minutes by default.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(result, f, indent=1, default=_json_default)
+    payload = json.dumps(result, indent=1, default=_json_default)
+    tmp = path.with_name(path.name + ".tmp")
+    delay = base_delay
+    for attempt in range(retries + 1):
+        try:
+            with open(tmp, "w") as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+            return
+        except OSError as exc:
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+            if attempt == retries:
+                raise
+            log.warning("writing %s failed (%s); retrying in %.0fs", path, exc, delay)
+            time.sleep(delay)
+            delay = min(delay * 2, 300.0)
+
+
+def result_is_valid(path: Path) -> bool:
+    """True if ``path`` holds a complete, parseable result file."""
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return isinstance(data, dict) and "metrics" in data and "records" in data
+    except (OSError, ValueError):
+        return False
 
 
 def _json_default(o: Any):
@@ -422,16 +459,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     failures = 0
     for i, cfg in enumerate(runs, 1):
         if args.resume and cfg.output_path.exists():
-            log.info("[%d/%d] %s exists, skipping", i, len(runs), cfg.run_id)
-            continue
+            if result_is_valid(cfg.output_path):
+                log.info("[%d/%d] %s exists, skipping", i, len(runs), cfg.run_id)
+                continue
+            log.warning("[%d/%d] %s exists but is unreadable; redoing", i, len(runs), cfg.run_id)
         log.info("[%d/%d] %s", i, len(runs), cfg.run_id)
         try:
             result = run_single(cfg, resources)
+            save_result(result, cfg.output_path)
         except Exception:
             failures += 1
             log.exception("run %s failed", cfg.run_id)
             continue
-        save_result(result, cfg.output_path)
         m = result["metrics"]
         log.info(
             "%s  acc=%.3f [%.3f, %.3f]  f1=%.3f  unparsed=%.1f%%  time=%.1fs",

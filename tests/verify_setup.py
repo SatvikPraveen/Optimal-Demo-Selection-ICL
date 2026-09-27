@@ -196,14 +196,16 @@ def main():
         print("\n📝 Next steps:")
         print("   1. Set up API keys: cp .env.example .env")
         print("   2. Read README.md and docs/methods.md")
-        print("   3. Run the smoke benchmark: python experiments/run_benchmark.py --benchmark smoke")
+        print(
+            "   3. Run the smoke benchmark: python experiments/run_benchmark.py --benchmark smoke"
+        )
     else:
         print("⚠️  Some checks failed. Please review the errors above.")
         print("\n🔧 Troubleshooting:")
         print("   1. Make sure you activated the virtual environment:")
         print("      source venv/bin/activate")
         print("   2. Install the package:")
-        print("      pip install -e \".[dev]\"")
+        print('      pip install -e ".[dev]"')
         print("   3. Install missing dependencies:")
         print("      pip install -r requirements.txt")
     print("=" * 70)

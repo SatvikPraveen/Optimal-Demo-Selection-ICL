@@ -33,7 +33,10 @@ for m in $MODELS; do
   for d in $DATASETS; do for me in $METHODS; do
     total=$((total + 1))
     have=0
-    for s in $SEEDS; do [ -f "results/raw/${d}__${m}__${me}__seed${s}.json" ] && have=$((have + 1)); done
+    for s in $SEEDS; do
+      f="results/raw/${d}__${m}__${me}__seed${s}.json"
+      [ -f "$f" ] && venv/bin/python -I -c "import json,sys; d=json.load(open(sys.argv[1])); assert 'metrics' in d" "$f" 2>/dev/null && have=$((have + 1))
+    done
     if [ "$have" -eq "$nseeds" ]; then
       done_cells=$((done_cells + 1))
       for f in "logs/cell_${d}__${m}__${me}.out" "logs/${d}__${m}__${me}.log"; do
