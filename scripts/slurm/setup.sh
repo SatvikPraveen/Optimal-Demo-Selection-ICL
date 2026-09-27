@@ -20,6 +20,12 @@ export HF_HUB_ENABLE_HF_TRANSFER=0
 cd "$PROJECT_DIR"
 mkdir -p "$HF_HOME" logs results/raw results/processed
 
+# huggingface_hub reads its token from $HF_HOME/token, so a token stored by
+# `huggingface-cli login` in the default location must be mirrored there.
+if [ ! -f "$HF_HOME/token" ] && [ -f "$HOME/.cache/huggingface/token" ]; then
+  install -m 600 "$HOME/.cache/huggingface/token" "$HF_HOME/token"
+fi
+
 if [ ! -x venv/bin/python ]; then
   echo ">> creating venv (python $PYTHON_VERSION)"
   uv venv --python "$PYTHON_VERSION" venv
