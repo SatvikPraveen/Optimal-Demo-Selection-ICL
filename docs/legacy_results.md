@@ -1,36 +1,14 @@
-# Optimal-Demo-Selection-ICL
+# Legacy results from the original notebook experiments
 
-![MIT License](https://img.shields.io/github/license/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![Repo Size](https://img.shields.io/github/repo-size/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Issues](https://img.shields.io/github/issues/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Pull Requests](https://img.shields.io/github/issues-pr/SatvikPraveen/Optimal-Demo-Selection-ICL)
-![Stars](https://img.shields.io/github/stars/SatvikPraveen/Optimal-Demo-Selection-ICL?style=social)
-
-
-Implements and benchmarks optimal demonstration selection strategies in In-Context Learning (ICL) using large language models (LLMs). Strategies covered: IDS, RDES, Se², TopK+ConE, and Influence-based methods, evaluated across classification, reasoning, and QA tasks.
-
-## Team Members 
-- Kamisetty Yamini Preethi • yamini_preethi_k@tamu.edu  
-- Jonathan Tong • tongjo@tamu.edu  
-- Satvik Praveen • satvikpraveen_164@tamu.edu  
-- Vinay Chandra Bandi • vinaychandra@tamu.edu  
-
-## Table of Contents
-
-1. [Project Overview](#project-overview)  
-2. [Selection Strategies](#selection-strategies)  
-3. [Models & Datasets](#models--datasets)  
-4. [Experiment Results](#experiment-results)
-   - [TopK + ConE Results](#topk--cone-performance)
-   - [Iterative Demonstration Selection (IDS)](#iterative-demonstration-selection-ids)
-   - [Reinforcement Demonstration Selection (RDES)](#reinforcement-demonstration-selection-rdes)
-   - [Sequential Example Selection (Se²) Across Models](#se²-across-models)
-   - [Se² with LLaMA-3.2-3B](#se²-with-llama-3.2-3b-commonsenseqa-ag-news-sst-5)
-   - [Influence-based Selection Results](#influence-based-selection-performance)
-   - [Overall Method Comparison](#comparison-of-all-methods)
-5. [Usage](#usage)  
-6. [Repository Structure](#repository-structure)  
+> **Provenance.** This page preserves the results section of the original,
+> notebook-based version of this repository (course project, 2024). The
+> numbers were produced by the notebooks now archived under
+> `notebooks_archive/` and **not** by the current `src/` code. They are kept
+> for reference only: the notebooks used different prompts, data slices,
+> label parsing and, in several cases, flawed scoring (see
+> [methods.md](methods.md) for what was changed and why). They should not be
+> compared directly with numbers produced by `experiments/run_benchmark.py`.
+> Figures referenced below live in `../Figures/`.
 
 ---
 
@@ -85,7 +63,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | Gemma-2B-it   |  0.85   | 0.62  |     0.590     |
 | LLaMA-3.2-3B  |  0.82   | 0.57  |     0.540     |
 
-![IDS Performance](Figures/IDS_results.png)
+![IDS Performance](../Figures/IDS_results.png)
 ---
 
 ### RDES Performance
@@ -96,7 +74,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | LLaMA-3.2-3B |  0.52  | 0.4351  |  0.6276  |     0.24      |
 | Gemma-2B     |  0.91  | 0.3297  |  0.2500  |     0.4357    |
 
-![RDES Performance](Figures/RDES_results.png)
+![RDES Performance](../Figures/RDES_results.png)
 ---
 
 ### Influence-Based Selection Performance
@@ -107,7 +85,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | LLaMA-3.2-3B |  0.25   | 0.27  |     0.710     |
 | Gemma-2B     |  0.524  | 0.511 |     0.710     |
 
-![Influence Selection Performance](Figures/Influence_results_image.png)
+![Influence Selection Performance](../Figures/Influence_results_image.png)
 ---
 
 ### 1. Se² Performance Across Model Architectures
@@ -118,7 +96,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | GEMMA-2B      |        0.211  |   0.825 | 0.258 |
 | GPT-2-medium  |        0.196  |   0.581 | 0.263 |
 
-![Se² Across Models](Figures/Se2_Other_models.png)
+![Se² Across Models](../Figures/Se2_Other_models.png)
 
 *Table:* Average Se² accuracy over three 100-example splits.  
 *Figure:* Bar chart of Se² performance on CommonsenseQA, AG News, and SST-5.
@@ -135,7 +113,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | 2-shot       | 0.108 | 0.140 | 0.179 |
 | 3-shot       | 0.079 | 0.060 | 0.080 |
 
-![CommonsenseQA Se²](Figures/Se2_llama_CommonsenseQA.png)
+![CommonsenseQA Se²](../Figures/Se2_llama_CommonsenseQA.png)
 
 #### AG News
 
@@ -145,7 +123,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | 2-shot       | 0.731 | 0.748 | 0.759 |
 | 3-shot       | 0.727 | 0.765 | 0.786 |
 
-![AG News Se²](Figures/Se2_llama_AG_News.png)
+![AG News Se²](../Figures/Se2_llama_AG_News.png)
 
 #### SST-5
 
@@ -155,7 +133,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | 2-shot       | 0.361 | 0.387 | 0.382 |
 | 3-shot       | 0.394 | 0.352 | 0.396 |
 
-![SST-5 Se²](Figures/Se2_llama_SST5.png)
+![SST-5 Se²](../Figures/Se2_llama_SST5.png)
 
 *All values averaged over three random splits.*
 
@@ -170,7 +148,7 @@ This repository supports research on demonstration selection for ICL. We investi
 | Se²         | 0.581  |    0.698     |  0.825   |
 | Influence   | 0.700  |    0.250     |  0.524   |
 
-![All Methods](Figures/results_comparison.png)
+![All Methods](../Figures/results_comparison.png)
 ---
 
 ## Repository Structure

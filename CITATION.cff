@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Optimal Demonstration Selection for In-Context Learning"
+type: software
+authors:
+  - family-names: Praveen
+    given-names: Satvik
+  - family-names: Tong
+    given-names: Jonathan
+  - family-names: Kamisetty
+    given-names: Yamini Preethi
+  - family-names: Bandi
+    given-names: Vinay Chandra
+repository-code: "https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL"
+license: MIT
+version: 0.2.0
+date-released: "2026-09-26"
+keywords:
+  - in-context learning
+  - demonstration selection
+  - few-shot learning
+  - large language models
+  - benchmark

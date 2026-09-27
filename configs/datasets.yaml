@@ -1,50 +1,35 @@
 # ============================================================================
-# Dataset Configuration
+# Dataset metadata (informational).
+#
+# Prompt templates, label verbalizers and split handling are defined in
+# src/datasets/tasks.py (the Task registry); this file documents the upstream
+# sources and typical sizes used by the benchmarks in experiments.yaml.
 # ============================================================================
 
 datasets:
   sst5:
-    name: "SetFit/sst5"
-    config: "default"
-    task_type: "sentiment_classification"
+    source: "SetFit/sst5"
+    task_type: sentiment_classification
     num_classes: 5
-    label_names:
-      - "very negative"
-      - "negative"
-      - "neutral"
-      - "positive"
-      - "very positive"
-    splits:
-      train: "train"
-      validation: "validation"
-      test: "test"
-    default_samples:
-      train: 5000
-      test: 1000
+    label_names: [very negative, negative, neutral, positive, very positive]
+    upstream_splits: {train: train, validation: validation, test: test}
+    sizes: {train: 8544, validation: 1101, test: 2210}
 
   agnews:
-    name: "wangrongsheng/ag_news"
-    task_type: "topic_classification"
+    source: "wangrongsheng/ag_news (parquet mirror of ag_news)"
+    task_type: topic_classification
     num_classes: 4
-    label_names:
-      - "World"
-      - "Sports"
-      - "Business"
-      - "Technology"
-    splits:
-      train: "train"
-      test: "test"
-    default_samples:
-      train: 5000
-      test: 1000
+    label_names: [World, Sports, Business, Technology]
+    upstream_splits: {train: train, test: test}
+    validation: "carved from the tail of a seeded shuffle of train (10%)"
+    sizes: {train: 120000, test: 7600}
 
-  commonsense_qa:
-    name: "tau/commonsense_qa"
-    task_type: "multiple_choice_qa"
+  csqa:
+    source: "tau/commonsense_qa"
+    task_type: multiple_choice_qa
     num_classes: 5
-    splits:
-      train: "train"
-      validation: "validation"
-    default_samples:
-      train: 5000
-      validation: 1000
+    label_names: [A, B, C, D, E]
+    upstream_splits: {train: train, validation: validation}
+    test: "the labeled validation split (the official test split is unlabeled)"
+    validation: "carved from the tail of a seeded shuffle of train (10%)"
+    sizes: {train: 9741, validation: 1221}

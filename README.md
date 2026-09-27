@@ -5,638 +5,256 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-> **A modular framework for benchmarking demonstration selection methods in few-shot in-context learning.**
+A reproducible benchmark of demonstration-selection methods for few-shot
+in-context learning (ICL). Eight selectors, three tasks and any causal LM
+(local HuggingFace checkpoints or the OpenAI API) share one prompt format, one
+prediction rule, one evaluation protocol and one config-driven runner, so
+methods can be compared like-for-like with confidence intervals and paired
+significance tests.
 
-This repository implements and evaluates multiple demonstration selection strategies for In-Context Learning (ICL) with large language models. We provide a clean, extensible codebase for reproducing and extending research on optimal example selection.
+**Team:** Kamisetty Yamini Preethi, Jonathan Tong, Satvik Praveen, Vinay Chandra Bandi (Texas A&M University).
 
----
+## Contents
 
-## Team Members
-
-- **Kamisetty Yamini Preethi** • yamini_preethi_k@tamu.edu
-- **Jonathan Tong** • tongjo@tamu.edu
-- **Satvik Praveen** • satvikpraveen_164@tamu.edu
-- **Vinay Chandra Bandi** • vinaychandra@tamu.edu
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
+- [What is in the box](#what-is-in-the-box)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Project Structure](#project-structure)
-- [Selection Strategies](#selection-strategies)
-- [Models & Datasets](#models--datasets)
-- [Running Experiments](#running-experiments)
+- [Quick start](#quick-start)
+- [Running the benchmark](#running-the-benchmark)
+- [Evaluation protocol](#evaluation-protocol)
 - [Results](#results)
-- [Development Guide](#development-guide)
+- [Project structure](#project-structure)
+- [Extending the benchmark](#extending-the-benchmark)
+- [Development](#development)
 - [Citation](#citation)
-- [License](#license)
 
----
+## What is in the box
 
-## Overview
+**Selection methods** (`src/selection/`, details and references in [docs/methods.md](docs/methods.md)):
 
-In-context learning enables LLMs to perform tasks using only a few demonstration examples in the prompt. However, **which demonstrations to select** dramatically impacts performance. This project benchmarks five state-of-the-art selection algorithms:
+| Method | Key idea | Uses the LM at selection time |
+|---|---|---|
+| `random` | uniform random demonstrations (lower bound) | no |
+| `topk` (SBERT / kNN) | nearest neighbours in sentence-embedding space | no |
+| `bm25` | lexical retrieval (Okapi BM25) | no |
+| `topk_cone` | Top-K retrieval re-ranked by conditional entropy of the query (Peng et al., 2024) | scorer LM |
+| `ids` | iterative selection driven by zero-shot chain-of-thought rationales (Qin et al., 2023) | evaluated model |
+| `rdes` | tabular Q-learning balancing relevance and label diversity (Wang et al., 2024) | no |
+| `se2` | sequential beam search over demonstration order scored by the LM (Liu et al., 2024) | scorer LM |
+| `influence` | datamodel-style subset-sampling influence scores, one fixed prompt (Nguyen & Wong, 2023) | evaluated model, once |
 
-### Key Research Questions
+**Tasks** (`src/datasets/tasks.py`): SST-5 (5-way sentiment), AG News (4-way
+topic), CommonsenseQA (5-way multiple choice, scored on the answer letter).
 
-1. **Which selection method performs best?** Across different tasks and models
-2. **How does computational cost trade off with accuracy?** 
-3. **What factors make demonstrations effective?** Relevance, diversity, ordering
+**Models** (`src/models/`): any `AutoModelForCausalLM` checkpoint
+(`HFCausalModel`, with LLaMA/Gemma aliases), OpenAI chat models (`GPTModel`),
+and a deterministic `DummyModel` so the whole pipeline runs in CI.
 
-### Methodology
-
-- **3 tasks**: Sentiment (SST-5), Topic Classification (AG News), Commonsense Reasoning (CSQA)
-- **3+ models**: GPT-4o, LLaMA-3.2-3B, Gemma-2B, GPT-2
-- **5 algorithms**: TopK+CoNE, IDS, RDES, Se², Influence-based
-- **Rigorous evaluation**: Multiple seeds, statistical testing, a broad set of metrics
-
----
-
-## Features
-
-### Architecture
-
-- **Modular design**: Clean separation of concerns (datasets, models, selection, evaluation)
-- **Reproducible**: Seed control, detailed logging, configuration management
-- **Extensible**: Add new methods, datasets, or models with minimal code changes
-- **Type-safe**: Type hints throughout for better code quality
-
-### Benchmarking
-
-- Multiple baseline methods (Random, BM25, SBERT)
-- Statistical significance testing
-- Confidence intervals via bootstrapping
-- Computational cost tracking
-- Visualization tools
-
-### Engineering
-
-- Unit/integration tests with CI on every push and PR (see badge above)
-- Proper dependency management
-- Virtual environment support
-- API key management
-- Detailed documentation
-
----
+**Evaluation** (`src/evaluation/`): accuracy and macro-F1, percentile
+bootstrap CIs over test examples, mean ± std over seeds, exact McNemar and
+paired-bootstrap tests against a baseline, parse-failure rate, and per-run
+cost (fit / selection / inference time, calls, tokens).
 
 ## Installation
 
-### Prerequisites
-
-- **Python**: 3.10 or higher (`requirements.txt` pins only lower bounds, and the
-  newest torch/transformers releases it currently resolves to require >=3.10)
-- **GPU**: CUDA-compatible GPU recommended for local models
-- **API Keys**: 
-  - OpenAI API key (for GPT models)
-  - HuggingFace token (for gated models like LLaMA)
-
-### Quick Setup
+Python 3.10 or newer. A GPU is recommended for local models but nothing here
+requires one.
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL.git
 cd Optimal-Demo-Selection-ICL
-
-# 2. Run automated setup (creates venv and installs dependencies)
-chmod +x setup_env.sh
-./setup_env.sh
-
-# 3. Activate virtual environment
-source venv/bin/activate  # On Windows: venv\\Scripts\\activate
-
-# 4. Set up API keys
-cp .env.example .env
-# Edit .env and add your API keys (OPENAI_API_KEY, HF_TOKEN)
-
-# 5. Install package
-pip install -e .
+./setup_env.sh              # creates ./venv, installs the package with dev extras and pre-commit hooks
+source venv/bin/activate
 ```
 
-### Manual Setup
+or manually:
 
 ```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Install in development mode
-pip install -e .
+python -m venv venv && source venv/bin/activate
+pip install -e ".[dev]"     # core + pytest/black/ruff/mypy/matplotlib
 ```
 
-> For exact reproduction of reported results (or to match what CI installs),
-> use the pinned lock file instead: `pip install -r requirements-lock.txt`.
-> `requirements.txt` only pins lower bounds and is the loose, general-purpose
-> install path.
+For a bit-for-bit environment use the lock file: `pip install -r requirements-lock.txt`.
 
----
+API keys and tokens are read from the environment (`cp .env.example .env`
+and fill in `OPENAI_API_KEY` / `HF_TOKEN`; the runner loads `.env` if
+`python-dotenv` is installed).
 
-## Quick Start
-
-### Example: Run IDS on SST-5
+## Quick start
 
 ```python
-from src.datasets import load_sst5
-from src.models import GPTModel
-from src.selection import IDS
+from src.datasets import get_task, load_split, load_train_without_holdout
+from src.models import HFCausalModel
 from src.prompting import ICLInference, PromptBuilder
-from src.evaluation import compute_metrics
+from src.selection import TopKCoNE
+from src.evaluation import compute_metrics, bootstrap_ci
 from src.utils import set_seed
 
-# Set seed for reproducibility
-set_seed(42)
+set_seed(0)
+task = get_task("sst5")
+train_texts, train_labels = load_train_without_holdout(task, num_samples=500, seed=0)
+test_texts, test_labels = load_split(task, "test", num_samples=100, seed=0)
 
-# Load dataset
-train_texts, train_labels = load_sst5(split="train", num_samples=1000)
-test_texts, test_labels = load_sst5(split="test", num_samples=100)
+model = HFCausalModel("gpt2")                                  # or GPTModel("gpt-4o-mini")
+inference = ICLInference(model, PromptBuilder(task.instruction))  # scores label log-probs for HF models
 
-# Initialize components
-model = GPTModel(model_name="gpt-4o-mini")
-selector = IDS(k=5, embedding_model="all-MiniLM-L6-v2")
-inference = ICLInference(model=model)
+selector = TopKCoNE(k=5, retrieve_k=30, scorer=model.scorer)   # any BaseSelector works here
+selector.fit(task.format_demos(train_texts, train_labels), train_labels)
 
-# Precompute training-pool embeddings once, instead of re-embedding all of
-# train_texts on every select_demonstrations() call in the loop below
-train_embeddings = selector.precompute_train_embeddings(train_texts)
+preds = []
+for text in test_texts:
+    query = task.format_query(text)
+    demo_idx = selector.select(query)
+    demos = [selector.candidates[i] for i in demo_idx]
+    preds.append(inference.predict(demos, query, task)["prediction"])
 
-# Run ICL with selected demonstrations
-predictions = []
-for test_text in test_texts:
-    # Select demonstrations
-    demo_indices = selector.select_demonstrations(
-        test_text, 
-        train_texts,
-        zero_shot_cot_fn=inference.run_zero_shot_cot,
-        icl_fn=lambda q, demos: inference.run_icl(demos, q),
-        precomputed_train_embeddings=train_embeddings
-    )
-    
-    # Get predictions
-    demos = [train_texts[i] for i in demo_indices]
-    pred = inference.run_icl(demos, test_text)
-    predictions.append(pred)
-
-# Evaluate
-metrics = compute_metrics(predictions, test_labels)
-print(f"Accuracy: {metrics['accuracy']:.3f}")
-print(f"F1: {metrics['f1']:.3f}")
+print(compute_metrics(preds, test_labels))
+print(bootstrap_ci([p == y for p, y in zip(preds, test_labels)]))
 ```
 
-### Quick Benchmark Test
+## Running the benchmark
 
-> **Note:** `experiments/run_benchmark.py` does not exist in this repository yet —
-> only `experiments/run_ids.py` and `experiments/run_topk_cone.py` are
-> implemented. The command below is aspirational; see the provenance note in
-> [Results](#results) for details.
+Everything is driven by `configs/experiments.yaml` (benchmarks, defaults,
+method hyper-parameters) and `configs/models.yaml` (model registry).
 
 ```bash
-# Run a quick test with small dataset
-python experiments/run_benchmark.py \\
-    --config configs/experiments.yaml \\
-    --benchmark quick_test \\
-    --output results/quick_test.json
+# All 8 methods on SST-5 with the dummy model: seconds, no GPU or API key.
+python experiments/run_benchmark.py --benchmark smoke
+
+# A real run on a local GPT-2 (downloads ~500 MB the first time).
+python experiments/run_benchmark.py --benchmark quick_test
+
+# The full grid: 3 datasets x 3 models x 8 methods x 3 seeds. Override anything from the CLI.
+python experiments/run_benchmark.py --benchmark full_benchmark --models llama-3.2-3b --seeds 0 1 2 --resume
+
+# k-shot ablation (writes to results/raw/k{1,3,5,8}/).
+python experiments/run_benchmark.py --benchmark ablation_k
+
+# Tables + significance tests, then plots.
+python experiments/aggregate_results.py --baseline random
+python experiments/plot_results.py
 ```
 
----
+`--dry-run` lists the runs a benchmark expands to; `--resume` skips runs
+whose result file already exists, so a long grid can be restarted.
 
-## Project Structure
+Each run writes `results/raw/<dataset>__<model>__<method>__seed<seed>.json` with:
 
-```
-optimal-demo-selection-icl/
-│
-├── README.md                       # This file
-├── requirements.txt                # Python dependencies
-├── setup.py                        # Package installation configuration
-├── .gitignore                      # Git ignore rules (includes venv/)
-├── setup_env.sh                   # Automated environment setup
-│
-├── venv/                           # Virtual environment (in repo, but gitignored)
-│
-├── configs/                        # YAML configuration files
-│   ├── datasets.yaml              # Dataset configurations
-│   ├── models.yaml                # Model configurations  
-│   └── experiments.yaml           # Experiment configurations
-│
-├── src/                            # Main source code (modular)
-│   ├── __init__.py
-│   │
-│   ├── datasets/                  # Dataset loaders
-│   │   ├── __init__.py
-│   │   ├── load_sst5.py          # SST-5 sentiment dataset
-│   │   ├── load_agnews.py        # AG News topic classification
-│   │   └── load_csqa.py          # CommonsenseQA
-│   │
-│   ├── models/                    # LLM model interfaces
-│   │   ├── __init__.py
-│   │   ├── base.py               # Abstract base class
-│   │   ├── gpt.py                # OpenAI GPT models
-│   │   ├── llama.py              # Meta LLaMA models
-│   │   └── gemma.py              # Google Gemma models
-│   │
-│   ├── selection/                 # Demonstration selection algorithms
-│   │   ├── __init__.py
-│   │   ├── topk_cone.py          # TopK + CoNE
-│   │   ├── ids.py                # Iterative Demonstration Selection
-│   │   ├── rdes.py               # RDES
-│   │   ├── se2.py                # Se²
-│   │   └── influence.py          # Influence-based selection
-│   │
-│   ├── prompting/                 # Prompt construction & inference
-│   │   ├── __init__.py
-│   │   ├── prompt_builder.py     # Prompt templates
-│   │   └── inference.py          # ICL inference engine
-│   │
-│   ├── evaluation/                # Metrics & benchmarking
-│   │   ├── __init__.py
-│   │   └── metrics.py            # Accuracy, F1, confidence intervals
-│   │
-│   └── utils/                     # Utilities
-│       ├── __init__.py
-│       ├── seed.py               # Reproducibility utilities
-│       └── logging.py            # Logging configuration
-│
-├── experiments/                   # Experiment scripts
-│   ├── run_topk_cone.py
-│   ├── run_ids.py
-│   ├── run_rdes.py
-│   └── run_benchmark.py          # Main benchmarking script
-│
-├── notebooks/                     # Jupyter notebooks for analysis
-│   └── analysis.ipynb
-│
-├── results/                       # Experiment results
-│   ├── raw/                      # Raw predictions (.gitignored)
-│   ├── processed/                # Aggregated metrics (.gitignored)
-│   └── plots/                    # Visualizations (.gitignored)
-│
-├── Figures/                       # Paper figures
-├── paper/                         # Research paper (PDF)
-│
-└── Old Notebooks/                 # Legacy notebooks (for reference)
-    ├── TopK+CoNE/
-    ├── IDS/
-    ├── RDES/
-    ├── SE2/
-    └── ICINF/
-```
+- `records`: per test example, the selected pool indices and their labels,
+  the prediction, the gold label and the raw model output;
+- `metrics`: accuracy, macro-F1, precision, recall, bootstrap 95% CI,
+  parse-failure rate (and `ids_majority_vote_accuracy` for IDS);
+- `cost`: fit / selection / inference wall time, model calls and tokens
+  split into fit-time and evaluation-time usage, scorer forward passes;
+- `selector`, `model`, `task`, `config`: every hyper-parameter of the run;
+- `manifest`: git commit (and whether the tree was dirty), Python and
+  package versions, CUDA device.
 
-### Key Design Principles
+`aggregate_results.py` produces `results/processed/runs.csv`, `summary.csv`,
+`significance.csv` and `summary.md` (mean ± std over seeds per dataset,
+model and method, plus Δ accuracy vs the baseline with a paired-bootstrap CI
+and an exact McNemar p-value pooled over seeds).
 
-- **Separation of Concerns**: Each module has a single responsibility
-- **Configuration Over Code**: YAML configs for easy experimentation
-- **Reproducibility First**: Seed control, logging, version tracking
-- **Easy Extension**: Add new methods via inheritance, not modification
+## Evaluation protocol
 
----
-
-## Selection Strategies
-
-### Implemented Methods
-
-| Method | Description | Key Idea | Complexity |
-|--------|-------------|----------|------------|
-| **TopK + CoNE** | Embedding retrieval + Cross-entropy refinement | Information gain quantification | O(n·k) |
-| **IDS** | Iterative refinement with CoT | Align demos with reasoning path | O(q·n·k) |
-| **RDES** | RL-based selection (tabular Q-learning) | Balance relevance & diversity | O(k·n) |
-| **Se²** | Sequential beam search | Order-aware selection | O(k²·b) |
-| **Influence** | Influence function scoring | Gradient-based importance | O(n·p) |
-
-### Baseline Methods
-
-- **Random**: Random k examples (lower bound)
-- **BM25**: Classical IR retrieval
-- **SBERT**: Semantic similarity via sentence embeddings
-- **kNN**: k-Nearest neighbors in embedding space
-
-### References
-
-- **TopK + CoNE**: Peng et al. "CoNE: Information-Theoretic Context Selection"
-- **IDS**: Qin et al. "Iterative Demonstration Selection using CoT"
-- **RDES**: Wang et al. "RL for Demonstration Selection"
-- **Se²**: Lu et al. "Sequential Example Selection"
-- **Influence**: Nguyen & Wong "Influence-based Selection"
-
----
-
-## Models & Datasets
-
-### Supported Models
-
-| Model | Type | Provider | Context | Cost | Access |
-|-------|------|----------|---------|------|--------|
-| **GPT-4o-mini** | API | OpenAI | 128K | $0.15/1M input | API key |
-| **GPT-3.5-turbo** | API | OpenAI | 16K | $0.50/1M input | API key |
-| **LLaMA-3.2-3B** | Local | Meta | 128K | Free* | HF token |
-| **Gemma-2B** | Local | Google | 8K | Free* | HF token |
-| **GPT-2-medium** | Local | OpenAI | 1K | Free | Public |
-
-*Requires GPU for inference
-
-### Datasets
-
-| Dataset | Task | Classes | Train | Test | Metric |
-|---------|------|---------|-------|------|--------|
-| **SST-5** | Sentiment Classification | 5 | 8,544 | 2,210 | Acc, F1 |
-| **AG News** | Topic Classification | 4 | 120K | 7,600 | Acc, F1 |
-| **CommonsenseQA** | Multiple-Choice QA | 5 | 9,741 | 1,221 | Acc |
-
----
-
-## Running Experiments
-
-### 1. Single Method Evaluation
-
-```bash
-# Run IDS on SST-5 with GPT-4o-mini
-python experiments/run_ids.py \\
-    --dataset sst5 \\
-    --model gpt-4o-mini \\
-    --k 5 \\
-    --num_test 500 \\
-    --num_train 2000 \\
-    --seed 42
-```
-
-### 2. Full Benchmark (All Methods × Models × Datasets)
-
-```bash
-python experiments/run_benchmark.py \\
-    --config configs/experiments.yaml \\
-    --benchmark full_benchmark \\
-    --output results/full_benchmark.json \\
-    --n_runs 3
-```
-
-This runs:
-- 5 methods × 3 models × 3 datasets = 45 experiments
-- 3 random seeds for statistical confidence
-- Saves detailed results + summary statistics
-
-### 3. Ablation Study (Vary k-shot)
-
-```bash
-python experiments/run_benchmark.py \\
-    --config configs/experiments.yaml \\
-    --benchmark ablation_study \\
-    --output results/ablation.json
-```
-
-### 4. Custom Experiment
-
-Create `my_experiment.yaml`:
-
-```yaml
-datasets: ["sst5", "agnews"]
-models: ["gpt-4o-mini"]
-methods: ["ids", "topk_cone", "random"]
-k: 5
-num_test_samples: 1000
-num_train_samples: 5000
-num_runs: 5
-seed: 42
-```
-
-Run:
-
-```bash
-python experiments/run_benchmark.py --config my_experiment.yaml
-```
-
----
+- **Splits.** The demonstration pool is sampled from the training split
+  and is disjoint from the validation slice (used only by `influence`) and
+  from the test set. CommonsenseQA's labeled validation split serves as its
+  test set because the official test split is unlabeled.
+- **Prompts.** One template per task (`src/datasets/tasks.py`):
+  instruction, then `k` demonstrations, then the query.
+- **Prediction.** Local models rank the label verbalizers by
+  `log p(label | prompt)` (`prediction_mode: score`); API models generate
+  and the text is mapped onto the label set by a documented decoding rule
+  (`prediction_mode: generate`). Unparseable outputs count as wrong and are
+  reported separately.
+- **Uncertainty.** Bootstrap CIs over test examples within a run; mean ±
+  sample std and a t-interval over seeds; paired McNemar and bootstrap
+  tests between methods evaluated on the same examples.
+- **Reproducibility.** `set_seed` seeds Python, NumPy and torch; every
+  stochastic selector owns a seeded generator; result files carry the
+  commit hash and library versions.
 
 ## Results
 
-### Result Files
+No benchmark table is published from the current code yet. Producing one is
+a single command (`--benchmark full_benchmark` followed by
+`aggregate_results.py`), and this README will be updated with the resulting
+`summary.md` once a full grid has been run on the target models.
 
-After running experiments, results are saved in:
+The accuracies obtained by the original notebook experiments (2024) are kept
+in [docs/legacy_results.md](docs/legacy_results.md) together with the figures
+in `Figures/`. They were produced by the archived notebooks, not by `src/`,
+with different prompts, data slices and, in places, flawed scoring, so they are
+not comparable to numbers produced by this benchmark; [docs/methods.md](docs/methods.md)
+lists what changed in each method and why.
+
+## Project structure
 
 ```
-results/
-├── raw/
-│   └── ids_gpt4o_sst5_20240306.json       # Raw predictions
-├── processed/
-│   └── benchmark_summary.csv              # Aggregated metrics
-└── plots/
-    ├── accuracy_heatmap.png               # Method × Dataset heatmap
-    ├── method_comparison_boxplot.png      # Statistical comparison
-    └── cost_vs_accuracy.png               # Efficiency analysis
+configs/
+  experiments.yaml      benchmarks, defaults, method hyper-parameters
+  models.yaml           model registry (type, checkpoint, kwargs)
+  datasets.yaml         dataset metadata (informational; templates live in src/datasets/tasks.py)
+experiments/
+  run_benchmark.py      config-driven runner (one JSON per run)
+  aggregate_results.py  tables + significance tests
+  plot_results.py       accuracy bars with CIs, cost-vs-accuracy scatter
+src/
+  datasets/             loaders (SST-5, AG News, CSQA) and the Task registry
+  models/               BaseModel + usage tracking, HFCausalModel, GPTModel, DummyModel, LMScorer
+  selection/            BaseSelector, baselines, TopKCoNE, IDS, RDES, Se2, InfluenceSelection, registry
+  prompting/            PromptBuilder, ICLInference.predict
+  evaluation/           metrics, parsing, stats (bootstrap, McNemar, permutation)
+  utils/                seeding, logging, shared Embedder, environment manifest
+tests/                  pytest suite; all network boundaries mocked (no GPU / keys needed)
+docs/                   methods.md (algorithms and deviations), legacy_results.md
+notebooks_archive/      the original course-project notebooks (reference only)
+Figures/, paper/        figures and report from the original project
 ```
 
-### Sample Results
+## Extending the benchmark
 
-> **Provenance note:** this table was introduced in the March 2026
-> "research-grade modular architecture" rewrite, and its numbers do not match
-> the per-model results reported in the pre-rewrite README (see
-> `docs/README_old.md` / git history before that commit) — it is not simply
-> carried over from the original notebook-based experiments either. More
-> importantly, it cannot have been produced by the current `src/`-based code:
-> `Se²` and influence-based selection (`src/selection/se2.py`,
-> `influence.py`) are still unimplemented (`raise NotImplementedError`), and
-> the `SBERT`/`Random`/`BM25`/`kNN` baselines named in
-> `configs/experiments.yaml` have no corresponding implementation anywhere in
-> `src/`. `experiments/run_benchmark.py`, which the sections above tell you to
-> run to reproduce this table, does not exist in this repository (and never
-> has, per `git log`). `RDES` (`src/selection/rdes.py`) is now implemented —
-> ported from the tabular Q-learning approach used consistently across the
-> SST-5/AG News notebooks in `notebooks_archive/RDES/`, verified to run
-> end-to-end and reproducibly (same seed → identical Q-table and selections)
-> and to visibly balance relevance/diversity rather than picking randomly.
-> The CommonsenseQA notebook's RDES variants were *not* ported (they diverge
-> from each other and from the SST-5/AG News version — see the module
-> docstring in `rdes.py`), so treat RDES as unverified for CSQA specifically.
-> None of this means the CSQA column above is now trustworthy, and `IDS`,
-> `TopK+CoNE`, and `RDES` having working implementations still doesn't make
-> this table's actual numbers verified — no rerun has happened. Treat the
-> table below as illustrative/placeholder, not a verified result of this
-> codebase — until it's regenerated from a real run and that run is linked
-> here, or removed.
+**A new selector**: subclass `src.selection.BaseSelector`, implement
+`fit`/`select`/`get_config`, register it in `src/selection/registry.py`
+and add its hyper-parameters under `methods:` in `configs/experiments.yaml`.
+If it needs the LM, take an `LMScorer` (log-likelihoods) or the IDS-style
+callbacks (generation) in `__init__`; the registry wires them up.
 
-| Method | SST-5 | AG News | CSQA | Average | Rank |
-|--------|-------|---------|------|---------|------|
-| **IDS** | 0.82±0.02 | 0.76±0.01 | 0.68±0.03 | **0.75** | 1 |
-| **TopK+CoNE** | 0.79±0.02 | 0.78±0.02 | 0.65±0.02 | **0.74** | 2 |
-| **Se²** | 0.77±0.03 | 0.75±0.02 | 0.67±0.02 | **0.73** | 3 |
-| **SBERT** | 0.76±0.02 | 0.74±0.01 | 0.70±0.02 | **0.73** | 3 |
-| **Random** | 0.65±0.04 | 0.62±0.03 | 0.58±0.04 | **0.62** | 5 |
+**A new task**: add a loader returning `(texts, labels)` and a `Task`
+entry (label names, instruction, input/output prefixes, split mapping) to
+`src/datasets/tasks.py`.
 
-*Results are Accuracy ± 95% CI across 3 runs — see the provenance note above.*
+**A new model**: add an entry to `configs/models.yaml`; any
+`AutoModelForCausalLM` checkpoint works out of the box. Other backends
+subclass `BaseModel` and implement `_generate` (and `_score_choices` if
+they expose log-probabilities).
 
-### Key Findings
-
-1. **IDS performs best on average** but requires multiple inference passes
-2. **TopK+CoNE offers best speed/accuracy tradeoff**
-3. **Task-specific winners**: SBERT excels on CSQA (semantic similarity matters)
-4. **Model dependency**: Selection matters more for smaller models
-5. **k-shot sensitivity**: Performance plateaus after k=5 for most methods
-
----
-
-## Development Guide
-
-### Adding a New Selection Method
-
-```python
-# 1. Create src/selection/my_method.py
-from typing import List
-import numpy as np
-
-class MyMethod:
-    def __init__(self, k: int = 5):
-        self.k = k
-    
-    def select_demonstrations(
-        self, 
-        query: str,
-        candidates: List[str]
-    ) -> List[int]:
-        # Your selection logic here
-        selected_indices = ...
-        return selected_indices
-
-# 2. Add to src/selection/__init__.py
-from .my_method import MyMethod
-__all__ = [..., "MyMethod"]
-
-# 3. Create experiment script
-# experiments/run_my_method.py
-
-# 4. Add config
-# configs/experiments.yaml
-```
-
-### Adding a New Dataset
-
-```python
-# 1. Create src/datasets/load_mydataset.py
-from datasets import load_dataset
-from typing import List, Tuple
-
-def load_mydataset(
-    split: str = "train",
-    num_samples: int = None
-) -> Tuple[List[str], List[str]]:
-    dataset = load_dataset("your/dataset", split=split)
-    # ... processing
-    return texts, labels
-
-# 2. Add to configs/datasets.yaml
-mydataset:
-  name: "your/dataset"
-  task_type: "classification"
-  num_classes: 3
-  ...
-```
-
-### Running Tests
+## Development
 
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Installation/setup diagnostic (standalone script, not a pytest module)
-python tests/verify_setup.py
-
-# Run the pytest suite (unit + integration tests)
-pytest tests/test_functionality.py tests/test_project.py
-
-# With coverage
-pytest --cov=src tests/test_functionality.py tests/test_project.py
-
-# Lint code
-black src/
-flake8 src/
-mypy src/
+pytest                          # ~80 tests, a few seconds, no network
+ruff check src tests experiments
+black --check src tests experiments
+pre-commit install              # runs both on every commit
+python tests/verify_setup.py    # installation diagnostic
 ```
 
-See [`tests/README.md`](tests/README.md) for what each file covers and why
-`verify_setup.py` is run directly instead of through pytest. CI
-(`.github/workflows/tests.yml`) runs exactly these commands on Python 3.10
-and 3.11, with the sentence-transformers/gpt2/dataset network calls mocked.
-
-### Code Quality
-
-We use:
-- **Black** for code formatting
-- **Flake8** for linting
-- **MyPy** for type checking
-- **Pytest** for testing
-
----
+CI (`.github/workflows/tests.yml`) runs lint, the test suite on Python 3.10
+and 3.11, and the smoke benchmark. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
-If you use this code in your research, please cite:
-
 ```bibtex
-@article{praveen2024optimal,
-  title={Optimal Demonstration Selection for In-Context Learning},
-  author={Praveen, Satvik and Tong, Jonathan and 
-          Kamisetty, Yamini Preethi and Bandi, Vinay Chandra},
-  journal={Texas A&M University},
-  year={2024}
+@misc{praveen2024optimal,
+  title  = {Optimal Demonstration Selection for In-Context Learning},
+  author = {Praveen, Satvik and Tong, Jonathan and Kamisetty, Yamini Preethi and Bandi, Vinay Chandra},
+  year   = {2024},
+  note   = {Texas A\&M University. \url{https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL}}
 }
 ```
 
----
-
-## Contributing
-
-We welcome contributions! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow code style (run `black src/`)
-4. Add tests for new functionality
-5. Update documentation
-6. Submit a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
+A `CITATION.cff` is included for GitHub's "Cite this repository" button.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-- **HuggingFace** for Transformers and Datasets libraries
-- **OpenAI** for GPT API access
-- **Meta AI** for LLaMA models
-- **Google** for Gemma models
-- Research groups whose papers inspired this work
-
----
-
-## Contact
-
-For questions or collaboration:
-
-- **Issues**: Open a GitHub issue
-- **Email**: satvikpraveen_164@tamu.edu
-- **Project**: https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL
-
----
-
-## Related Resources
-
-### Papers
-- [Chain-of-Thought Prompting](https://arxiv.org/abs/2201.11903)
-- [In-Context Learning Survey](https://arxiv.org/abs/2301.00234)
-- [Learning to Retrieve Prompts](https://arxiv.org/abs/2112.08633)
-
-### Repositories
-- [HuggingFace Transformers](https://github.com/huggingface/transformers)
-- [Sentence-Transformers](https://github.com/UKPLab/sentence-transformers)
-- [OpenICL](https://github.com/Shark-NLP/OpenICL)
-
-
+MIT, see [LICENSE](LICENSE).

@@ -1,92 +1,54 @@
-# 🤝 Contributing to Optimal-Demo-Selection-ICL
+# Contributing
 
-Thank you for considering contributing to **Optimal-Demo-Selection-ICL**!
+Thanks for considering a contribution. This repository benchmarks
+demonstration-selection methods for in-context learning; contributions that
+add methods, tasks, models, tests or documentation are all welcome.
 
-This project implements and benchmarks optimal demonstration selection strategies for In-Context Learning (ICL) using Large Language Models (LLMs), such as IDS, RDES, Se², TopK+ConE, and Influence-based methods.
+## Workflow
 
----
+1. Fork the repository and create a branch (`git checkout -b feature/my-change`).
+2. Set up the environment: `./setup_env.sh && source venv/bin/activate`
+   (installs the package with dev extras and the pre-commit hooks).
+3. Make your change with clear, focused commits.
+4. Run the checks locally:
 
-## 🚀 How to Contribute
+   ```bash
+   ruff check src tests experiments
+   black --check src tests experiments
+   pytest
+   python experiments/run_benchmark.py --benchmark smoke   # optional end-to-end check
+   ```
 
-1. **Fork** the repository.
-2. **Create a new branch**  
- ```bash
-   git checkout -b feature/your-feature-name
- ```
+5. Open a pull request describing what changed, why, and any experiments
+   you ran to validate it.
 
-3. Make your changes with clear and descriptive commits.
-4. **Test your changes** thoroughly.
-5. Submit a **Pull Request** (PR) with a clear description of:
+## Code style
 
-   * What you changed and why
-   * Which files are affected
-   * Any experiments or validation (if applicable)
+- `black` (line length 100) and `ruff` are enforced in CI; `pre-commit`
+  runs them for you.
+- Type hints and docstrings on public classes and functions.
+- Reusable code goes in `src/`; runnable entry points in `experiments/`.
 
----
+## Adding a selection method
 
-## 💻 Code Style
+- Subclass `src.selection.BaseSelector`; implement `fit`, `select` and
+  `get_config`.
+- Register it in `src/selection/registry.py` and add default
+  hyper-parameters under `methods:` in `configs/experiments.yaml`.
+- Add unit tests under `tests/` that run without network access (see
+  `tests/conftest.py` for the fixtures that mock the embedding model, the
+  LM scorer and the dataset downloads) and add the method to the `smoke`
+  benchmark so `tests/test_benchmark.py` exercises it end to end.
+- Document the algorithm, its reference and any deviations in
+  `docs/methods.md`.
 
-* Follow **PEP8** standards for Python code.
-* Keep code **modular**, readable, and documented.
-* Use **snake\_case** for variables and `CamelCase` for class names.
-* Include **docstrings** for functions and classes.
-* Update or add documentation where relevant.
+## Reporting results
 
-> 💡 Tip: Reusable code should go into the `src/` directory.
+Please attach the JSON produced by `experiments/run_benchmark.py` (it
+carries the commit hash, library versions and every hyper-parameter) rather
+than numbers copied from a terminal, and state the seeds used.
 
----
+## Reporting bugs
 
-## 🐞 Reporting Bugs
-
-If you encounter a bug or unexpected behavior:
-
-1. Open a [GitHub Issue](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/issues/new).
-2. Include the following details:
-
-   * **Title**: Clear and concise
-   * **Steps to Reproduce**
-   * **Expected vs Actual Behavior**
-   * **Screenshots or logs** (if helpful)
-   * **Environment**: OS, Python version, etc.
-
----
-
-## 💡 Feature Suggestions
-
-We welcome new ideas to improve this project. Please include:
-
-* What problem it solves
-* How it benefits users or researchers
-* Any related research or implementation ideas
-
-Submit suggestions via:
-
-* GitHub [Issues](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/issues) — for concrete features
-* GitHub [Discussions](https://github.com/SatvikPraveen/Optimal-Demo-Selection-ICL/discussions) — for brainstorming and ideation
-
----
-
-## 📁 Project Structure
-
-```bash
-Optimal-Demo-Selection-ICL/
-├── IDS/               # Iterative Demonstration Selection
-├── RDES/              # Reinforcement Learning approach
-├── ICINF/             # Influence-based selection
-├── SE2/               # Sequential example selection
-├── TopK+CoNE/         # TopK + ConE method
-├── Figures/           # Performance visualizations
-├── LICENSE
-├── README.md
-└── CONTRIBUTING.md
-```
-
----
-
-## 🙌 Thank You!
-
-Every contribution — whether it’s code, ideas, experiments, or documentation — helps us push the boundaries of research in ICL and LLM-based strategies.
-
-We appreciate your time, effort, and interest. Let’s build something impactful together!
-
-— **The Optimal-Demo-Selection-ICL Team**
+Open an issue with the command you ran, the full traceback, and the output
+of `python tests/verify_setup.py`.

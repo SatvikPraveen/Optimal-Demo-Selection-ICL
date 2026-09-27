@@ -389,6 +389,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     setup_logger("icl", log_file=args.log_file)
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:  # pragma: no cover
+        pass
     config = load_yaml(args.config)
     models_config = (load_yaml(args.models_config) or {}).get("models") or {}
 
