@@ -75,6 +75,9 @@ benchmarks:
     num_val: 200
     num_test: 500
     seeds: [0, 1, 2]
+    # Score TopK+ConE / Se2 with the evaluated model itself when it is a local
+    # checkpoint (falls back to an error for API models: pass --scorer-model gpt2).
+    scorer_model: self
 
   ablation_k:
     datasets: [sst5]
