@@ -76,9 +76,13 @@ benchmarks:
     models: [gemma-2b, llama-3.2-3b, qwen2.5-7b]
     methods: [random, topk, bm25, topk_cone, ids, rdes, se2, influence]
     num_train: 2000
-    num_val: 200
+    num_val: 100
     num_test: 500
     seeds: [0, 1, 2]
+    # Influence with coverage=1 needs >= num_train / k subsets so that every
+    # candidate is evaluated at least once: 2000 / 5 = 400.
+    method_params:
+      influence: {num_subsets: 400}
     # Score TopK+ConE / Se2 with the evaluated model itself when it is a local
     # checkpoint (falls back to an error for API models: pass --scorer-model gpt2).
     scorer_model: self
