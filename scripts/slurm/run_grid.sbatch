@@ -8,6 +8,7 @@
 #
 #   sbatch --array=0-47 scripts/slurm/run_grid.sbatch
 #   sbatch --array=0-47 --export=ALL,BENCHMARK=full_benchmark,SEEDS="0 1 2" scripts/slurm/run_grid.sbatch
+#   sbatch --array=0-23 --export=ALL,MODELS="gemma-2b" scripts/slurm/run_grid.sbatch   # one model only
 #
 # Grid indices are enumerated by scripts/slurm/grid.py (dataset-major), so
 # `python scripts/slurm/grid.py` prints the mapping.
@@ -34,7 +35,11 @@ cd "$PROJECT_DIR"
 # shellcheck disable=SC1091
 source venv/bin/activate
 
-read -r DATASET MODEL METHOD < <(python scripts/slurm/grid.py --benchmark "$BENCHMARK" --index "${SLURM_ARRAY_TASK_ID:-0}")
+# MODELS (space-separated) restricts the grid to a subset of the benchmark's
+# models, e.g. MODELS="gemma-2b" -> 24 cells; grid.py prints the mapping.
+MODELS="${MODELS:-}"
+# shellcheck disable=SC2086
+read -r DATASET MODEL METHOD < <(python scripts/slurm/grid.py --benchmark "$BENCHMARK" --index "${SLURM_ARRAY_TASK_ID:-0}" ${MODELS:+--models $MODELS})
 echo "task ${SLURM_ARRAY_TASK_ID:-0}: dataset=$DATASET model=$MODEL method=$METHOD seeds=$SEEDS"
 echo "node=$(hostname) gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
 
