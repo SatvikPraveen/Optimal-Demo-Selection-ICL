@@ -27,7 +27,7 @@ PROJECT_DIR="${PROJECT_DIR:-/general/satvikpraveen/Optimal-Demo-Selection-ICL}"
 BENCHMARK="${BENCHMARK:-full_benchmark}"
 SEEDS="${SEEDS:-0 1 2}"
 export HF_HOME="${HF_HOME:-/general/satvikpraveen/hf_cache}"
-export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # slurm compute nodes reach the Hub; set 1 to force cache-only
 export TOKENIZERS_PARALLELISM=false
 
 cd "$PROJECT_DIR"
