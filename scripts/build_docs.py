@@ -19,6 +19,7 @@ REPO = Path(__file__).resolve().parents[1]
 DOCS = REPO / "docs"
 
 REWRITES = [
+    (r"(src=\")results/plots/", r"\1plots/"),  # README images -> copied into the site
     (r"\]\(docs/", "]("),  # docs/methods.md -> methods.md
     (r"\]\(CONTRIBUTING\.md\)", "](contributing.md)"),
     (r"\]\(CHANGELOG\.md\)", "](changelog.md)"),
@@ -48,6 +49,11 @@ def main() -> int:
     (DOCS / "index.md").write_text(rewrite((REPO / "README.md").read_text()))
     (DOCS / "contributing.md").write_text(rewrite((REPO / "CONTRIBUTING.md").read_text()))
     (DOCS / "changelog.md").write_text(rewrite((REPO / "CHANGELOG.md").read_text()))
+    plots = DOCS / "plots"
+    if plots.exists():
+        shutil.rmtree(plots)
+    if (REPO / "results" / "plots").exists():
+        shutil.copytree(REPO / "results" / "plots", plots)
     figures = DOCS / "Figures"
     if figures.exists():
         shutil.rmtree(figures)

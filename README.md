@@ -212,6 +212,13 @@ Per-task tables with seed standard deviations are in
 [`results/plots/`](results/plots/). The per-example predictions and selected demonstrations of all 216 runs are in
 [`results/raw.tar.gz`](results/raw.tar.gz) (`tar xzf results/raw.tar.gz -C results` restores `results/raw/`).
 
+<p align="center">
+  <img src="results/plots/accuracy_gemma-2b_k5.png" width="32%" alt="Accuracy by method and task, Gemma-2B">
+  <img src="results/plots/accuracy_llama-3.2-3b_k5.png" width="32%" alt="Accuracy by method and task, LLaMA-3.2-3B">
+  <img src="results/plots/accuracy_qwen2.5-7b_k5.png" width="32%" alt="Accuracy by method and task, Qwen2.5-7B">
+</p>
+<p align="center"><em>Accuracy per task and method; error bars are 95 % t-intervals over three seeds.</em></p>
+
 ### Findings
 
 1. **Selection matters, but modestly.** The best methods add about two points of average accuracy over random
