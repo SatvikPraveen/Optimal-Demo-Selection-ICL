@@ -132,3 +132,16 @@ def mock_hf_datasets(monkeypatch):
         }
     )
     monkeypatch.setattr(agnews_module.pd, "read_parquet", lambda *a, **k: fake_agnews)
+
+    csqa_module = importlib.import_module("src.datasets.load_csqa")
+    letters = ["A", "B", "C", "D", "E"]
+    fake_csqa = Dataset.from_dict(
+        {
+            "question": [f"what is thing {i}?" for i in range(100)],
+            "choices": [
+                {"label": letters, "text": [f"opt{i}{ltr}" for ltr in letters]} for i in range(100)
+            ],
+            "answerKey": [letters[i % 5] for i in range(100)],
+        }
+    )
+    monkeypatch.setattr(csqa_module, "load_dataset", lambda *a, **k: fake_csqa)

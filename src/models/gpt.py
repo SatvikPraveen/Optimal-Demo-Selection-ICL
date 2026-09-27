@@ -1,66 +1,59 @@
 """
-OpenAI GPT model interface
+OpenAI chat-completions backend.
 """
 
-from openai import OpenAI
+from __future__ import annotations
+
+import os
+from typing import Any
 
 from .base import BaseModel
 
 
 class GPTModel(BaseModel):
     """
-    Interface for OpenAI GPT models (GPT-3.5, GPT-4, etc.)
+    OpenAI GPT models via the chat-completions API.
+
+    The API does not expose log-probabilities of arbitrary continuations,
+    so :attr:`supports_scoring` is ``False`` and classification falls back
+    to generation + :func:`src.evaluation.parsing.parse_prediction`.
     """
 
-    def __init__(self, model_name: str = "gpt-4o-mini", api_key: str | None = None, **kwargs):
-        """
-        Initialize GPT model.
+    supports_scoring = False
 
-        Args:
-            model_name: OpenAI model name
-            api_key: OpenAI API key (or set OPENAI_API_KEY env var)
-            **kwargs: Additional arguments
-        """
+    def __init__(
+        self,
+        model_name: str = "gpt-4o-mini",
+        api_key: str | None = None,
+        system_prompt: str | None = None,
+        max_retries: int = 3,
+        **kwargs: Any,
+    ):
         super().__init__(model_name, **kwargs)
-        self.client = OpenAI(api_key=api_key)
+        from openai import OpenAI  # imported lazily so the package is optional
 
-    def generate(
-        self, prompt: str, max_tokens: int = 100, temperature: float = 0.0, **kwargs
-    ) -> str:
-        """
-        Generate text using GPT.
+        api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=api_key, max_retries=max_retries)
+        self.system_prompt = system_prompt
+        self._last_prompt_tokens: int | None = None
+        self._last_completion_tokens: int | None = None
 
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            **kwargs: Additional OpenAI API arguments
-
-        Returns:
-            Generated text
-        """
+    def _generate(self, prompt: str, max_tokens: int, temperature: float, **kwargs) -> str:
+        messages: list[dict[str, str]] = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+        messages.append({"role": "user", "content": prompt})
         response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             **kwargs,
         )
-        return response.choices[0].message.content
+        usage = getattr(response, "usage", None)
+        self._last_prompt_tokens = getattr(usage, "prompt_tokens", None)
+        self._last_completion_tokens = getattr(usage, "completion_tokens", None)
+        return response.choices[0].message.content or ""
 
-    def batch_generate(
-        self, prompts: list[str], max_tokens: int = 100, temperature: float = 0.0, **kwargs
-    ) -> list[str]:
-        """
-        Generate text for multiple prompts.
-
-        Args:
-            prompts: List of input prompts
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            **kwargs: Additional arguments
-
-        Returns:
-            List of generated texts
-        """
-        return [self.generate(prompt, max_tokens, temperature, **kwargs) for prompt in prompts]
+    def _last_token_counts(self) -> tuple[int | None, int | None]:
+        return self._last_prompt_tokens, self._last_completion_tokens
