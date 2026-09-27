@@ -73,7 +73,7 @@ benchmarks:
   # --scorer-model gpt2 if you want that column.
   full_benchmark:
     datasets: [sst5, agnews, csqa]
-    models: [llama-3.2-3b, gemma-2b]
+    models: [gemma-2b, llama-3.2-3b, qwen2.5-7b]
     methods: [random, topk, bm25, topk_cone, ids, rdes, se2, influence]
     num_train: 2000
     num_val: 200

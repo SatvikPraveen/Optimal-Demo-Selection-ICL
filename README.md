@@ -138,7 +138,7 @@ python experiments/run_benchmark.py --benchmark smoke
 # A real run on a local GPT-2 (first run downloads the checkpoint).
 python experiments/run_benchmark.py --benchmark quick_test
 
-# The full grid: 3 datasets × 2 local models × 8 methods × 3 seeds. Any setting can be overridden on the CLI.
+# The full grid: 3 datasets × 3 local models × 8 methods × 3 seeds. Any setting can be overridden on the CLI.
 python experiments/run_benchmark.py --benchmark full_benchmark --models llama-3.2-3b --seeds 0 1 2 --resume
 
 # k-shot ablation (writes to results/raw/k{1,3,5,8}/).
@@ -240,7 +240,7 @@ Figures/ · paper/           figures and report from the original project
 ```bash
 bash scripts/slurm/setup.sh                       # venv, package, pre-download datasets and checkpoints, smoke run
 python scripts/slurm/grid.py                      # list the (dataset, model, method) cells and their array indices
-sbatch --array=0-23 --gres=gpu:2 scripts/slurm/run_grid.sbatch  # 48 cells, 2 per job (one per GPU), all seeds, resumable
+sbatch --array=0-35 --gres=gpu:2 scripts/slurm/run_grid.sbatch  # 72 cells, 2 per job (one per GPU), all seeds, resumable
 bash scripts/slurm/status.sh                      # queue state, finished runs per cell, errors in logs
 ```
 

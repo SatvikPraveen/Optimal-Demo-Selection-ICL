@@ -41,6 +41,12 @@ models:
     requires_auth: true
     kwargs: {torch_dtype: bfloat16}
 
+  qwen2.5-7b:
+    type: huggingface
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    max_context: 32768
+    kwargs: {torch_dtype: bfloat16}
+
   gpt-4o-mini:
     type: openai
     model_name: gpt-4o-mini
