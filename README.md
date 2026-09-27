@@ -240,7 +240,7 @@ Figures/ · paper/           figures and report from the original project
 ```bash
 bash scripts/slurm/setup.sh                       # venv, package, pre-download datasets and checkpoints, smoke run
 python scripts/slurm/grid.py                      # list the (dataset, model, method) cells and their array indices
-sbatch --array=0-47 scripts/slurm/run_grid.sbatch # one GPU task per cell, all seeds, resumable
+sbatch --array=0-23 --gres=gpu:2 scripts/slurm/run_grid.sbatch  # 2 cells per job (one per GPU), all seeds, resumable
 bash scripts/slurm/status.sh                      # queue state, finished runs per cell, errors in logs
 ```
 
