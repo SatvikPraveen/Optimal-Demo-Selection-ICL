@@ -2,7 +2,6 @@
 Evaluation metrics
 """
 
-import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
@@ -61,23 +60,11 @@ def compute_metrics(
 
 def compute_confidence_interval(scores: list[float], confidence: float = 0.95) -> tuple:
     """
-    Compute confidence interval using bootstrap.
-
-    Args:
-        scores: List of scores from multiple runs
-        confidence: Confidence level
-
-    Returns:
-        (mean, lower_bound, upper_bound)
+    Mean and t-interval across runs. Kept for backwards compatibility;
+    prefer :func:`src.evaluation.stats.summarize_seeds` /
+    :func:`src.evaluation.stats.bootstrap_ci`.
     """
-    scores = np.array(scores)
-    mean = np.mean(scores)
-    std = np.std(scores)
-    n = len(scores)
+    from .stats import summarize_seeds
 
-    # Using normal approximation
-    from scipy import stats
-
-    interval = stats.t.interval(confidence, n - 1, loc=mean, scale=std / np.sqrt(n))
-
-    return mean, interval[0], interval[1]
+    s = summarize_seeds(scores, confidence)
+    return s["mean"], s["lower"], s["upper"]
