@@ -14,6 +14,15 @@
 #          --export=ALL,MODELS="gemma-2b" scripts/slurm/run_grid.sbatch
 #   sbatch --array=0-5 --gres=gpu:4 --exclude=<pascal/turing nodes> ...
 #
+# Recommended submission on a cluster with a per-user job cap: one cell per
+# task under a high-job-count QOS, excluding nodes the torch build cannot use
+# (Pascal/Turing GPUs lack bf16; Blackwell GPUs have no cu121 kernels) and
+# nodes with known-faulty GPUs:
+#
+#   sbatch --array=0-23 --gres=gpu:1 --qos=maxjobs50 --partition=Contributors \
+#          --exclude=GPU22,GPU3,GPU4,GPU42,GPU6,GPU8,GPU9,GPU49,GPU55,GPU56,GPU57 \
+#          --export=ALL,MODELS="gemma-2b" scripts/slurm/run_grid.sbatch
+#
 # Environment overrides: BENCHMARK (full_benchmark), SEEDS ("0 1 2"),
 # MODELS (subset of the benchmark's models), HF_HOME, HF_HUB_OFFLINE (0).
 # ============================================================================
