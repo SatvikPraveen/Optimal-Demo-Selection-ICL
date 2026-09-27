@@ -67,9 +67,13 @@ benchmarks:
     seeds: [0]
     scorer_model: self
 
+  # Local open-weight models only. API models (e.g. gpt-4o-mini, registered in
+  # models.yaml) work with the same runner but cost money and cannot score
+  # label log-probabilities; add them to `models:` and pass
+  # --scorer-model gpt2 if you want that column.
   full_benchmark:
     datasets: [sst5, agnews, csqa]
-    models: [gpt-4o-mini, llama-3.2-3b, gemma-2b]
+    models: [llama-3.2-3b, gemma-2b]
     methods: [random, topk, bm25, topk_cone, ids, rdes, se2, influence]
     num_train: 2000
     num_val: 200
