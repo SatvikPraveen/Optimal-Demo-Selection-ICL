@@ -52,14 +52,14 @@ flake8==7.4.1
 fonttools==4.65.0
 fqdn==1.6.0
 frozenlist==1.8.0
-fsspec==2026.9.0
+fsspec==2026.7.0
 h11==0.16.0
 hf-xet==1.7.0
 httpcore==1.0.9
 httpcore2==2.13.1
 httpx==0.28.1
 httpx2==2.13.1
-huggingface_hub==2.2.0
+huggingface_hub==1.33.0
 idna==3.20
 iniconfig==2.3.1
 ipykernel==7.3.0
@@ -98,7 +98,7 @@ matplotlib-inline==0.2.2
 mccabe==0.7.0
 mdurl==0.1.2
 mistune==3.3.4
-mpmath==1.4.1
+mpmath==1.3.0
 multidict==7.1.0
 multiprocess==0.70.19
 mypy==2.4.0
@@ -120,7 +120,7 @@ pandocfilters==1.5.1
 parso==0.8.7
 pathspec==1.1.1
 pexpect==4.9.0
-pillow==12.3.0
+pillow==13.0.0
 platformdirs==4.12.4
 plotly==7.1.0
 pluggy==1.6.0
